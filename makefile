@@ -1,6 +1,9 @@
 BUILD := build
 RVIASM := python E:/code/hdl/Projects/riscv_refs/RISCV-RV32I-Assembler/src/rvi.py
 
+# default target
+proc.add:
+
 proc.%: 
 	make asm.$* tb.proc
 asm.%: tb/%.s

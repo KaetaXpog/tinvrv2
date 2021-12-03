@@ -57,6 +57,12 @@ module proc_dpath(
     input csrr_sel_D,
     input imul_req_val_D,
     output imul_req_rdy_D,
+    input bypass_waddr_X_rs1_D,
+    input bypass_waddr_X_rs2_D,
+    input bypass_waddr_M_rs1_D,
+    input bypass_waddr_M_rs2_D,
+    input bypass_waddr_W_rs1_D,
+    input bypass_waddr_W_rs2_D,
 
     input reg_en_X,
     output br_cond_ltu_X,
@@ -92,6 +98,7 @@ module proc_dpath(
     logic [31:0] inst_reg_D;
     logic [31:0] imm_gen_D, pc_plus_imm_D;
     logic [31:0] rf_rdata0_D, rf_rdata1_D;
+    logic [31:0] op1_rf_bypass_mux_D, op2_rf_bypass_mux_D;
     logic [31:0] op1_sel_mux_D, op2_sel_mux_D;
     logic [31:0] csrr_sel_mux_D;
     logic jal_target_D;
@@ -117,6 +124,7 @@ module proc_dpath(
     logic [31:0] wb_result_sel_mux_M;
 
 
+    /* STAGE W */
     logic [31:0] pc_reg_W;
     logic [31:0] wb_result_reg_W;
     
@@ -181,6 +189,23 @@ module proc_dpath(
         endcase
     end
     assign pc_plus_imm_D=imm_gen_D+pc_reg_D;
+
+    always @(*) begin: op1_rf_bypass_mux
+        casez({bypass_waddr_X_rs1_D,bypass_waddr_M_rs1_D,bypass_waddr_M_rs1_D})
+        'b1??: op1_rf_bypass_mux_D=alu_out_X;
+        'b01?: op1_rf_bypass_mux_D=wb_result_sel_mux_M;
+        'b001: op1_rf_bypass_mux_D=rf_wdata_W;
+        default: op1_rf_bypass_mux_D=rf_rdata0_D;
+        endcase
+    end
+    always @(*) begin: op2_rf_bypass_mux
+        casez({bypass_waddr_X_rs2_D,bypass_waddr_M_rs2_D,bypass_waddr_M_rs2_D})
+        'b1??: op2_rf_bypass_mux_D=alu_out_X;
+        'b01?: op2_rf_bypass_mux_D=wb_result_sel_mux_M;
+        'b001: op2_rf_bypass_mux_D=rf_wdata_W;
+        default: op2_rf_bypass_mux_D=rf_rdata0_D;
+        endcase
+    end
 
     always @(*) begin: op1_sel_mux
         if(op1_sel_D==`OP1_SEL_RF0)

@@ -1,0 +1,7 @@
+doc/
+build/
+archive/
+
+*.code-workspace
+
+tags

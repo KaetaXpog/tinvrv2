@@ -1,5 +1,5 @@
 BUILD := build
-RVIASM := python E:/code/hdl/Projects/riscv_refs/RISCV-RV32I-Assembler/src/rvi.py
+RVIASM := python ./software/RISCV-RV32I-Assembler/src/rvi.py
 
 # default target
 proc.add:

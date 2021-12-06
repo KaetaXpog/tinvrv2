@@ -5,3 +5,6 @@ archive/
 *.code-workspace
 
 tags
+
+*.b
+__pycache__

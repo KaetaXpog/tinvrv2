@@ -2,7 +2,7 @@
 
 module alu(
     input rst,
-    input fn,
+    input [3:0] fn,
     input [31:0] op1, op2,
     output logic [31:0] out,
     output logic ops_eq,

@@ -257,27 +257,29 @@ endtask
 
 always @(*) begin
   casez(inst_D) //      op      imm   op1     op2   rfw,csr er wr  
-  `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_OR   :oid(alu_or ,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_XOR  :oid(alu_xor,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SLT  :oid(alu_lt ,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
-  `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_ORI  :oid(alu_or ,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_XORI :oid(alu_xor,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_SLTI :oid(alu_lt ,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_SLTIU:oid(alu_ltu,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_SRAI :oid(alu_sra,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_SRLI :oid(alu_srl,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_SLLI :oid(alu_sll,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
-  `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,0, er_a,wr_a);
-  default           :oid(alu_add,0,    op1_rf,op2_rf ,n,0, er_a,wr_a);
+  `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_OR   :oid(alu_or ,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_XOR  :oid(alu_xor,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SLT  :oid(alu_lt ,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
+  `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_ORI  :oid(alu_or ,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_XORI :oid(alu_xor,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_SLTI :oid(alu_lt ,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_SLTIU:oid(alu_ltu,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_SRAI :oid(alu_sra,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_SRLI :oid(alu_srl,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_SLLI :oid(alu_sll,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_LUI  :oid(alu_op2,imm_u,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_AUIPC:oid(alu_add,imm_u,op1_pc,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,0,er_a,wr_a);
+  default           :oid(alu_add,0,    op1_rf,op2_rf ,n,0,er_a,wr_a);
   endcase
 end
 

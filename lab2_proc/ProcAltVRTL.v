@@ -88,6 +88,13 @@ module lab2_proc_ProcAltVRTL
   logic [4:0] rf_waddr_W;
   logic rf_wen_W;
 
+  logic bypass_waddr_X_rs1_D;
+  logic bypass_waddr_X_rs2_D;
+  logic bypass_waddr_M_rs1_D;
+  logic bypass_waddr_M_rs2_D;
+  logic bypass_waddr_W_rs1_D;
+  logic bypass_waddr_W_rs2_D;
+
 proc_ctrl u_proc_ctrl(
   .clk             (clk             ),
   .reset           (reset           ),
@@ -126,6 +133,14 @@ proc_ctrl u_proc_ctrl(
   .csrr_sel_D      (csrr_sel_D      ),
   .imul_req_val_D  (imul_req_val_D  ),
   .imul_req_rdy_D  (imul_req_rdy_D  ),
+
+  .bypass_waddr_X_rs1_D(bypass_waddr_X_rs1_D),
+  .bypass_waddr_X_rs2_D(bypass_waddr_X_rs2_D),
+  .bypass_waddr_M_rs1_D(bypass_waddr_M_rs1_D),
+  .bypass_waddr_M_rs2_D(bypass_waddr_M_rs2_D),
+  .bypass_waddr_W_rs1_D(bypass_waddr_W_rs1_D),
+  .bypass_waddr_W_rs2_D(bypass_waddr_W_rs2_D),
+
   .reg_en_X        (reg_en_X        ),
   .br_cond_ltu_X   (br_cond_ltu_X   ),
   .br_cond_lt_X    (br_cond_lt_X    ),
@@ -181,6 +196,14 @@ proc_dpath u_proc_dpath(
   .csrr_sel_D      (csrr_sel_D      ),
   .imul_req_val_D  (imul_req_val_D  ),
   .imul_req_rdy_D  (imul_req_rdy_D  ),
+
+  .bypass_waddr_X_rs1_D(bypass_waddr_X_rs1_D),
+  .bypass_waddr_X_rs2_D(bypass_waddr_X_rs2_D),
+  .bypass_waddr_M_rs1_D(bypass_waddr_M_rs1_D),
+  .bypass_waddr_M_rs2_D(bypass_waddr_M_rs2_D),
+  .bypass_waddr_W_rs1_D(bypass_waddr_W_rs1_D),
+  .bypass_waddr_W_rs2_D(bypass_waddr_W_rs2_D),
+
   .reg_en_X        (reg_en_X        ),
   .br_cond_ltu_X   (br_cond_ltu_X   ),
   .br_cond_lt_X    (br_cond_lt_X    ),

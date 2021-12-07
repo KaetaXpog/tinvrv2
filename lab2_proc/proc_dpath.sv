@@ -69,7 +69,7 @@ module proc_dpath(
     output br_cond_lt_X,
     output br_cond_eq_X,
     input [3:0] alu_fn_X,
-    input ex_result_sel_X,
+    input [1:0] ex_result_sel_X,
 
     output imul_resp_val_X,
     input imul_resp_rdy_X,
@@ -209,7 +209,7 @@ module proc_dpath(
 
     always @(*) begin: op1_sel_mux
         if(op1_sel_D==`OP1_SEL_RF0)
-            op1_sel_mux_D=rf_rdata0_D;
+            op1_sel_mux_D=op1_rf_bypass_mux_D;
         else if(op1_sel_D==`OP1_SEL_PC)
             op1_sel_mux_D=pc_reg_D;
     end
@@ -217,7 +217,7 @@ module proc_dpath(
         if(op2_sel_D==`OP2_SEL_IMM)
             op2_sel_mux_D=imm_gen_D;
         else if(op2_sel_D==`OP2_SEL_RF)
-            op2_sel_mux_D=rf_rdata1_D;
+            op2_sel_mux_D=op2_rf_bypass_mux_D;
         else if(op2_sel_D==`OP2_SEL_CSRR)
             op2_sel_mux_D=csrr_sel_mux_D;
     end
@@ -255,7 +255,7 @@ module proc_dpath(
     always @(*) begin: ex_result_sel_mux
         case(ex_result_sel_X)
         0: ex_result_sel_mux_X=pc_incr_X;
-        1: ex_result_sel_mux_X=0;
+        1: ex_result_sel_mux_X=alu_out_X;
         2: ex_result_sel_mux_X=0;
         endcase
     end
@@ -268,8 +268,8 @@ module proc_dpath(
 
     always @(*) begin: wb_result_sel_mux
         case(wb_result_sel_M)
-        0: wb_result_sel_mux_M=ex_result_reg_M;
-        1: wb_result_sel_mux_M=dmemresp_msg.data;
+        `WR_SEL_ALU: wb_result_sel_mux_M=ex_result_reg_M;
+        `WR_SEL_MEM: wb_result_sel_mux_M=dmemresp_msg.data;
         endcase
     end
 

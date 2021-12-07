@@ -33,4 +33,15 @@
 
 `define CSRR_SEL_CSR    2
 
+// X stage result sel; pc+4 / alu / mul
+`define ER_PCI          0
+`define ER_A            1
+`define ER_M            2
+
+// W stage result sel; alu result or mem result
+`define WR_SEL_ALU      0
+`define WR_SEL_MEM      1
+
+
+
 `endif // __DEFINES_V

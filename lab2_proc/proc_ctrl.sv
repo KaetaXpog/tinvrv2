@@ -70,7 +70,7 @@ module proc_ctrl(
   input br_cond_lt_X,
   input br_cond_eq_X,
   output logic [3:0] alu_fn_X,
-  output logic ex_result_sel_X,
+  output [1:0] ex_result_sel_X,
 
   input imul_resp_val_X,
   output logic imul_resp_rdy_X,
@@ -113,6 +113,13 @@ localparam op2_imm = 0,
 localparam csr_csr = 2;
 localparam y = 1,
   n=0;
+// x stage result sel
+localparam er_p = 0,
+  er_a=1,
+  er_m=2;
+// W stage result sel
+localparam wr_a = 0,
+  wr_m=1;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
 
@@ -144,12 +151,16 @@ logic [4:0] inst_rs1_D;
 logic [4:0] inst_rs2_D;
 logic [4:0] inst_rd_D;
 logic rf_wen_D;
+logic [1:0] ex_result_sel_D;
+logic wb_result_sel_D;
 
 logic [6:0] inst_op_X;
 logic [4:0] inst_rs1_X;
 logic [4:0] inst_rs2_X;
 logic [4:0] inst_rd_X;
 logic rf_wen_X;
+logic [1:0] ex_result_sel_X;
+logic wb_result_sel_X;
 
 logic [3:0] alu_fn_M;
 logic [6:0] inst_op_M;
@@ -229,7 +240,9 @@ task oid(
     input op1_sel,
     input [1:0] op2_sel,
     input rf_wen,
-    input [1:0] csrr_sel
+    input [1:0] csrr_sel,
+    input [1:0] er,
+    input wr
 );
   alu_fn_D=alu_fn;
   imm_type_D=imm_type;
@@ -237,14 +250,34 @@ task oid(
   op2_sel_D=op2_sel;
   rf_wen_D=rf_wen;
   csrr_sel_D=csrr_sel;
+
+  ex_result_sel_X=er;
+  wb_result_sel_D=wr;
 endtask
 
 always @(*) begin
-  casez(inst_D) //              imm   op1     op2   rfw,csr
-  `RV2ISA_INST_ADD: oid(alu_add,imm_i,op1_rf, op2_rf, y,csr_csr );
-  `RV2ISA_INST_ADDI:oid(alu_add,imm_i,op1_rf, op2_imm,y,0);
-  `RV2ISA_INST_NOP: oid(alu_add,0,    op1_rf, op2_imm,y,csr_csr );
-  default:          oid(alu_add,0,    0,      0     , n,0       );
+  casez(inst_D) //      op      imm   op1     op2   rfw,csr er wr  
+  `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_OR   :oid(alu_or ,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_XOR  :oid(alu_xor,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SLT  :oid(alu_lt ,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,0, er_a,wr_a);
+  `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_ORI  :oid(alu_or ,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_XORI :oid(alu_xor,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_SLTI :oid(alu_lt ,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_SLTIU:oid(alu_ltu,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_SRAI :oid(alu_sra,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_SRLI :oid(alu_srl,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_SLLI :oid(alu_sll,imm_i,op1_rf,op2_imm,y,0, er_a,wr_a);
+  `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,0, er_a,wr_a);
+  default           :oid(alu_add,0,    op1_rf,op2_rf ,n,0, er_a,wr_a);
   endcase
 end
 
@@ -260,6 +293,16 @@ pipe_reg #(.DW(4)) pipe_alu_fn_dx(
 pipe_reg #(.DW(7)) pipe_op_dx(clk,rst,1,inst_op_D,inst_op_X);
 pipe_reg #(.DW(15)) pipe_rsAndrd_dx(clk,rst,1,{inst_rs1_D,inst_rs2_D,inst_rd_D},
   {inst_rs1_X,inst_rs2_X,inst_rd_X});
+pipe_reg #(.DW(1)) pipe_rf_wen_dx(clk,rst,1,rf_wen_D,rf_wen_X);
+always @(posedge clk) begin
+  if(rst) begin
+    ex_result_sel_X<=0;
+    wb_result_sel_X<=0;
+  end else begin
+    ex_result_sel_X<=ex_result_sel_D;
+    wb_result_sel_X<=wb_result_sel_D;
+  end
+end
 
 assign stall_X=(ostall_X || ostall_M || ostall_W);
 assign ostall_X=0;
@@ -273,9 +316,18 @@ assign reg_en_X=val_X && !stall_X;
 pipe_reg #(.DW(1)) pipe_xm(
   clk, reset, 1, next_val_X, val_M
 );
+
 pipe_reg #(.DW(7)) pipe_op_xm(clk,rst,1,inst_op_X,inst_op_M);
 pipe_reg #(.DW(15)) pipe_rsAndrd_xm(clk,rst,1,{inst_rs1_X,inst_rs2_X,inst_rd_X},
   {inst_rs1_M,inst_rs2_M,inst_rd_M});
+pipe_reg #(.DW(1)) pipe_rf_wen_xm(clk,rst,1,rf_wen_X,rf_wen_M);
+always @(posedge clk) begin
+  if(rst) begin
+    wb_result_sel_M<=0;
+  end else begin
+    wb_result_sel_M<=wb_result_sel_X;
+  end
+end
 
 assign stall_M=(ostall_M || ostall_W);
 assign ostall_M=0;
@@ -292,6 +344,7 @@ pipe_reg #(.DW(1)) pipe_mw(
 pipe_reg #(.DW(7)) pipe_op_mw(clk,rst,1,inst_op_M,inst_op_W);
 pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,1,{inst_rs1_M,inst_rs2_M,inst_rd_M},
   {inst_rs1_W,inst_rs2_W,inst_rd_W});
+pipe_reg #(.DW(1)) pipe_rf_wen_mw(clk,rst,1,rf_wen_M,rf_wen_W);
 
 assign stall_W=(ostall_W);
 assign ostall_W=0;

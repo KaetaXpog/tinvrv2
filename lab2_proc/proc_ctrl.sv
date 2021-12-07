@@ -71,6 +71,7 @@ module proc_ctrl(
   input br_cond_eq_X,
   output logic [3:0] alu_fn_X,
   output [1:0] ex_result_sel_X,
+  output dmemreq_type_X,  // 0 for read, 1 for write when dmemreq_val
 
   input imul_resp_val_X,
   output logic imul_resp_rdy_X,
@@ -87,7 +88,8 @@ module proc_ctrl(
 wire rst=reset;
 
 // KEEP consistency with defines.v macro
-localparam op_lw = 'b0000011;
+localparam op_lw = 'b0000011,
+  op_sw='b0100011;
 localparam alu_add = 1,
   alu_sub=2,
   alu_and=3,
@@ -122,6 +124,9 @@ localparam wr_a = 0,
   wr_m=1;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
+wire imemresp_handshake=imemresp_val && imemresp_rdy;
+wire dmemreq_handshake=dmemreq_val && dmemreq_rdy;
+wire dmemresp_handshake=dmemresp_val && dmemresp_rdy;
 
 // we have NO squash NOW.
 logic val_F;
@@ -175,8 +180,13 @@ logic [4:0] inst_rs1_W;
 logic [4:0] inst_rs2_W;
 logic [4:0] inst_rd_W;
 
+logic ostall_wait_data_F;
+
 logic bypass_waddr_X_rs1_D;
 logic bypass_waddr_X_rs2_D;
+logic ostall_load_use_X_rs1_D;
+logic ostall_load_use_X_rs2_D;
+
 logic bypass_waddr_M_rs1_D;
 logic bypass_waddr_M_rs2_D;
 logic bypass_waddr_W_rs1_D;
@@ -184,14 +194,16 @@ logic bypass_waddr_W_rs2_D;
 
 /* STAGE F */
 pipe_reg #(.DW(1)) pipe_f(
-  clk, reset, 1, imemreq_handshake, val_F
+  clk, reset, reg_en_F, imemreq_handshake, val_F
 );
 
 assign stall_F=( ostall_F || ostall_D || ostall_X || ostall_M || ostall_W);
-assign ostall_F= imemreq_val && !imemreq_rdy;  // wait imem data
-assign next_val_F=val_F;
+assign ostall_F= ostall_wait_data_F;
+assign ostall_wait_data_F=imemreq_val && !imemreq_rdy;  // wait imem data
 
-assign reg_en_F=val_F && !stall_F;
+assign next_val_F=val_F && !stall_F;
+
+assign reg_en_F=!stall_F;
 assign pc_sel_F=`PC_SEL_P4_F;
 
 assign imemreq_val=1;
@@ -200,14 +212,15 @@ assign imemreq_val=1;
 /* STAGE D */
 //pipe_reg_wrv #(1) pipe_fd(clk, reset, reg_en_D, val_D, next_val_F, 0);
 pipe_reg #(.DW(1)) pipe_fd(
-  clk, reset, 1, next_val_F, val_D
+  clk, reset, reg_en_D, next_val_F, val_D
 );
 
 assign stall_D=(ostall_D || ostall_X || ostall_M || ostall_W);
-assign ostall_D=0;
-assign next_val_D=val_D;
+assign ostall_D=ostall_load_use_X_rs1_D || ostall_load_use_X_rs2_D;
 
-assign reg_en_D=val_D && !stall_D;
+assign next_val_D=val_D && !stall_D;
+
+assign reg_en_D=!stall_D;
 
 rv2isa_InstUnpack u_InstUnpack(
   .inst   (inst_D   ),
@@ -234,6 +247,11 @@ assign bypass_waddr_M_rs2_D=val_D && val_M && inst_op_D!=op_lw &&
 assign bypass_waddr_W_rs2_D=val_D && val_M && inst_op_D!=op_lw &&
   rf_wen_W && inst_rs2_D==inst_rd_W;
 
+assign ostall_load_use_X_rs1_D=val_D && val_X && rf_wen_X &&
+  inst_rs1_D==inst_rd_X && inst_rd_X!=0 && inst_op_X==op_lw;
+assign ostall_load_use_X_rs2_D=val_D && val_X && rf_wen_X &&
+  inst_rs2_D==inst_rd_X && inst_rd_X!=0 && inst_op_X==op_lw;
+
 task oid(
     input [3:0] alu_fn,
     input [1:0] imm_type,
@@ -257,6 +275,8 @@ endtask
 
 always @(*) begin
   casez(inst_D) //      op      imm   op1     op2   rfw,csr er wr  
+  `RV2ISA_INST_LW   :oid(alu_add,imm_u,op1_rf,op2_imm,n,0,er_a,wr_m);
+  `RV2ISA_INST_SW   :oid(alu_add,imm_s,op1_rf,op2_imm,y,0,er_a,wr_a);
   `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
   `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
   `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
@@ -285,10 +305,10 @@ end
 
 
 /* STAGE X */
-//pipe_reg_wrv #(1) pipe_dx(clk, reset, reg_en_X, val_X, next_val_D, 0);
 pipe_reg #(.DW(1)) pipe_dx(
-  clk, reset, 1, next_val_D, val_X
+  clk, reset, reg_en_X, next_val_D, val_X
 );
+
 pipe_reg #(.DW(4)) pipe_alu_fn_dx(
   clk, reset, 1, alu_fn_D, alu_fn_X
 );
@@ -308,15 +328,20 @@ end
 
 assign stall_X=(ostall_X || ostall_M || ostall_W);
 assign ostall_X=0;
-assign next_val_X=val_X;
 
-assign reg_en_X=val_X && !stall_X;
+assign next_val_X=val_X && !stall_X;
+
+assign reg_en_X=!stall_X;
+
+assign dmemreq_val=inst_op_X==op_lw || inst_op_X==op_sw;
+assign dmemreq_type_X=inst_op_X==op_sw;
+assign dmemresp_rdy=1;
 
 
 /* STAGE M */
 //pipe_reg_wrv #(1) pipe_xm(clk, reset, reg_en_M, val_M, next_val_X, 0);
 pipe_reg #(.DW(1)) pipe_xm(
-  clk, reset, 1, next_val_X, val_M
+  clk, reset, reg_en_M, next_val_X, val_M
 );
 
 pipe_reg #(.DW(7)) pipe_op_xm(clk,rst,1,inst_op_X,inst_op_M);
@@ -333,26 +358,29 @@ end
 
 assign stall_M=(ostall_M || ostall_W);
 assign ostall_M=0;
-assign next_val_M=val_M;
 
-assign reg_en_M=val_M && !stall_M;
+assign next_val_M=val_M && !stall_M;
+
+assign reg_en_M=!stall_M;
 
 
 /* STAGE W */
 //pipe_reg_wrv #(1) pipe_mw(clk, reset, reg_en_W, val_W, next_val_M, 0);
 pipe_reg #(.DW(1)) pipe_mw(
-  clk,reset,1,next_val_M,val_W
+  clk,reset,reg_en_W,next_val_M,val_W
 );
+
 pipe_reg #(.DW(7)) pipe_op_mw(clk,rst,1,inst_op_M,inst_op_W);
 pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,1,{inst_rs1_M,inst_rs2_M,inst_rd_M},
   {inst_rs1_W,inst_rs2_W,inst_rd_W});
 pipe_reg #(.DW(1)) pipe_rf_wen_mw(clk,rst,1,rf_wen_M,rf_wen_W);
 
-assign stall_W=(ostall_W);
+assign stall_W=ostall_W;
 assign ostall_W=0;
-assign next_val_W=val_W;
 
-assign reg_en_W=val_W && !stall_W;
+assign next_val_W=val_W && !stall_W;
+
+assign reg_en_W=!stall_W;
 
 assign rf_waddr_W=inst_rd_W;
 

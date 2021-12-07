@@ -75,7 +75,8 @@ module lab2_proc_ProcAltVRTL
   logic br_cond_lt_X;
   logic br_cond_eq_X;
   logic [3:0] alu_fn_X;
-  logic ex_result_sel_X;
+  logic [1:0] ex_result_sel_X;
+  logic dmemreq_type_X;
 
   logic imul_resp_val_X;
   logic imul_resp_rdy_X;
@@ -147,8 +148,10 @@ proc_ctrl u_proc_ctrl(
   .br_cond_eq_X    (br_cond_eq_X    ),
   .alu_fn_X        (alu_fn_X        ),
   .ex_result_sel_X (ex_result_sel_X ),
+  .dmemreq_type_X  (dmemreq_type_X  ),
   .imul_resp_val_X (imul_resp_val_X ),
   .imul_resp_rdy_X (imul_resp_rdy_X ),
+
   .reg_en_M        (reg_en_M        ),
   .wb_result_sel_M (wb_result_sel_M ),
   .reg_en_W        (reg_en_W        ),
@@ -210,6 +213,7 @@ proc_dpath u_proc_dpath(
   .br_cond_eq_X    (br_cond_eq_X    ),
   .alu_fn_X        (alu_fn_X        ),
   .ex_result_sel_X (ex_result_sel_X ),
+  .dmemreq_type_X  (dmemreq_type_X  ),
   .imul_resp_val_X (imul_resp_val_X ),
   .imul_resp_rdy_X (imul_resp_rdy_X ),
   .reg_en_M        (reg_en_M        ),

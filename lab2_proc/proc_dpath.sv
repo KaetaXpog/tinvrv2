@@ -70,6 +70,7 @@ module proc_dpath(
     output br_cond_eq_X,
     input [3:0] alu_fn_X,
     input [1:0] ex_result_sel_X,
+    input dmemreq_type_X,
 
     output imul_resp_val_X,
     input imul_resp_rdy_X,
@@ -260,7 +261,11 @@ module proc_dpath(
         endcase
     end
 
-
+    // dmem req
+    assign dmemreq_msg.type_=dmemreq_type_X;
+    assign dmemreq_msg.opaque=0;
+    assign dmemreq_msg.addr=alu_out_X;
+    assign dmemreq_msg.len=0;
 
     /* STAGE M */
     pipe_reg #(.DW(32)) pipe_pc_XM(clk, rst, reg_en_M, pc_reg_X, pc_reg_M);

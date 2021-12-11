@@ -1,6 +1,6 @@
-doc/
-build/
-archive/
+doc/*
+build/*
+archive/*
 
 *.code-workspace
 

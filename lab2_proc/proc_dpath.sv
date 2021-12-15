@@ -177,9 +177,9 @@ module proc_dpath(
         .rdata0(rf_rdata0_D),
         .raddr1(inst_reg_D[24:20]),
         .rdata1(rf_rdata1_D),
-        .wen(),
-        .waddr(),
-        .wdata()
+        .wen(rf_wen_W),
+        .waddr(rf_waddr_W),
+        .wdata(rf_wdata_W)
     );
 
     always @(*) begin: imm_gen
@@ -192,7 +192,7 @@ module proc_dpath(
     assign pc_plus_imm_D=imm_gen_D+pc_reg_D;
 
     always @(*) begin: op1_rf_bypass_mux
-        casez({bypass_waddr_X_rs1_D,bypass_waddr_M_rs1_D,bypass_waddr_M_rs1_D})
+        casez({bypass_waddr_X_rs1_D,bypass_waddr_M_rs1_D,bypass_waddr_W_rs1_D})
         'b1??: op1_rf_bypass_mux_D=alu_out_X;
         'b01?: op1_rf_bypass_mux_D=wb_result_sel_mux_M;
         'b001: op1_rf_bypass_mux_D=rf_wdata_W;
@@ -200,7 +200,7 @@ module proc_dpath(
         endcase
     end
     always @(*) begin: op2_rf_bypass_mux
-        casez({bypass_waddr_X_rs2_D,bypass_waddr_M_rs2_D,bypass_waddr_M_rs2_D})
+        casez({bypass_waddr_X_rs2_D,bypass_waddr_M_rs2_D,bypass_waddr_W_rs2_D})
         'b1??: op2_rf_bypass_mux_D=alu_out_X;
         'b01?: op2_rf_bypass_mux_D=wb_result_sel_mux_M;
         'b001: op2_rf_bypass_mux_D=rf_wdata_W;
@@ -235,7 +235,7 @@ module proc_dpath(
     pipe_reg #(.DW(32)) pipe_pc_DX(clk, rst, reg_en_X, pc_reg_D,      pc_reg_X        );
     pipe_reg #(.DW(32)) pipe_op1_DX(clk, rst, reg_en_X, op1_sel_mux_D, op1_reg_X       );
     pipe_reg #(.DW(32)) pipe_op2_DX(clk, rst, reg_en_X, op2_sel_mux_D, op2_reg_X       );
-    pipe_reg #(.DW(32)) pipe_dmem_wdata_DX(clk, rst, reg_en_X, rf_rdata1_D, dmemreq_msg.data);
+    pipe_reg #(.DW(32)) pipe_dmem_wdata_DX(clk, rst, reg_en_X, op2_rf_bypass_mux_D, dmemreq_msg.data);
 
     assign br_target_X= br_target_X;
     assign jalr_target_X=0;

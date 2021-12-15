@@ -233,18 +233,18 @@ rv2isa_InstUnpack u_InstUnpack(
   .csr    (    )
 );
 
-assign bypass_waddr_X_rs1_D=val_D && val_X && inst_op_D!=op_lw &&
+assign bypass_waddr_X_rs1_D=val_D && val_X && inst_op_X!=op_lw &&
   rf_wen_X && inst_rs1_D==inst_rd_X;
-assign bypass_waddr_M_rs1_D=val_D && val_M && inst_op_D!=op_lw &&
+assign bypass_waddr_M_rs1_D=val_D && val_M && 
   rf_wen_M && inst_rs1_D==inst_rd_M;
-assign bypass_waddr_W_rs1_D=val_D && val_M && inst_op_D!=op_lw &&
+assign bypass_waddr_W_rs1_D=val_D && val_W && 
   rf_wen_W && inst_rs1_D==inst_rd_W;
 
-assign bypass_waddr_X_rs2_D=val_D && val_X && inst_op_D!=op_lw &&
+assign bypass_waddr_X_rs2_D=val_D && val_X && inst_op_X!=op_lw &&
   rf_wen_X && inst_rs2_D==inst_rd_X;
-assign bypass_waddr_M_rs2_D=val_D && val_M && inst_op_D!=op_lw &&
+assign bypass_waddr_M_rs2_D=val_D && val_M && 
   rf_wen_M && inst_rs2_D==inst_rd_M;
-assign bypass_waddr_W_rs2_D=val_D && val_M && inst_op_D!=op_lw &&
+assign bypass_waddr_W_rs2_D=val_D && val_W && 
   rf_wen_W && inst_rs2_D==inst_rd_W;
 
 assign ostall_load_use_X_rs1_D=val_D && val_X && rf_wen_X &&
@@ -275,8 +275,8 @@ endtask
 
 always @(*) begin
   casez(inst_D) //      op      imm   op1     op2   rfw,csr er wr  
-  `RV2ISA_INST_LW   :oid(alu_add,imm_u,op1_rf,op2_imm,n,0,er_a,wr_m);
-  `RV2ISA_INST_SW   :oid(alu_add,imm_s,op1_rf,op2_imm,y,0,er_a,wr_a);
+  `RV2ISA_INST_LW   :oid(alu_add,imm_i,op1_rf,op2_imm,y,0,er_a,wr_m);
+  `RV2ISA_INST_SW   :oid(alu_add,imm_s,op1_rf,op2_imm,n,0,er_a,wr_a);
   `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
   `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
   `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);

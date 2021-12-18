@@ -89,7 +89,9 @@ wire rst=reset;
 
 // KEEP consistency with defines.v macro
 localparam op_lw = 'b0000011,
-  op_sw='b0100011;
+  op_sw='b0100011,
+  op_jal='b1101111,
+  op_jalr='b1100111;
 localparam alu_add = 1,
   alu_sub=2,
   alu_and=3,
@@ -128,7 +130,7 @@ wire imemresp_handshake=imemresp_val && imemresp_rdy;
 wire dmemreq_handshake=dmemreq_val && dmemreq_rdy;
 wire dmemresp_handshake=dmemresp_val && dmemresp_rdy;
 
-// we have NO squash NOW.
+// TODO: squash
 logic val_F;
 logic val_D;
 logic val_X;
@@ -139,26 +141,42 @@ logic next_val_D;
 logic next_val_X;
 logic next_val_M;
 logic next_val_W;
-logic stall_F;
-logic stall_D;
-logic stall_X;
-logic stall_M;
-logic stall_W;
 logic ostall_F;
 logic ostall_D;
 logic ostall_X;
 logic ostall_M;
 logic ostall_W;
+logic stall_F;
+logic stall_D;
+logic stall_X;
+logic stall_M;
+logic stall_W;
+logic osquash_D;
+logic osquash_X;
+logic osquash_M;
+logic osquash_W;
+logic squash_F;
+logic squash_D;
+logic squash_X;
+logic squash_M;
+logic squash_W;
 
+logic pc_redirect_D;
+logic [1:0] pc_sel_D;
+logic [2:0] br_type_D;
 logic [3:0] alu_fn_D;
 logic [6:0] inst_op_D;
 logic [4:0] inst_rs1_D;
 logic [4:0] inst_rs2_D;
 logic [4:0] inst_rd_D;
+logic [`RV2ISA_INST_CSR_NBITS-1:0] inst_csr_D;
 logic rf_wen_D;
 logic [1:0] ex_result_sel_D;
 logic wb_result_sel_D;
 
+logic pc_redirect_X;
+logic [1:0] pc_sel_X;
+logic [2:0] br_type_X;
 logic [6:0] inst_op_X;
 logic [4:0] inst_rs1_X;
 logic [4:0] inst_rs2_X;
@@ -192,35 +210,44 @@ logic bypass_waddr_M_rs2_D;
 logic bypass_waddr_W_rs1_D;
 logic bypass_waddr_W_rs2_D;
 
+logic osquash_j_D;
+logic osquash_take_branch_X;
+
+
 /* STAGE F */
 pipe_reg #(.DW(1)) pipe_f(
   clk, reset, reg_en_F, imemreq_handshake, val_F
 );
 
+assign ostall_wait_data_F=imemreq_val && !imemreq_rdy;  // wait imem data
 assign stall_F=( ostall_F || ostall_D || ostall_X || ostall_M || ostall_W);
 assign ostall_F= ostall_wait_data_F;
-assign ostall_wait_data_F=imemreq_val && !imemreq_rdy;  // wait imem data
 
-assign next_val_F=val_F && !stall_F;
+assign squash_F=val_F && (osquash_D||osquash_X);
 
-assign reg_en_F=!stall_F;
+assign reg_en_F=!stall_F ||squash_F;
+assign next_val_F=val_F && !stall_F && !squash_F;
+
+
 assign pc_sel_F=`PC_SEL_P4_F;
 
 assign imemreq_val=1;
 
 
 /* STAGE D */
-//pipe_reg_wrv #(1) pipe_fd(clk, reset, reg_en_D, val_D, next_val_F, 0);
 pipe_reg #(.DW(1)) pipe_fd(
   clk, reset, reg_en_D, next_val_F, val_D
 );
 
-assign stall_D=(ostall_D || ostall_X || ostall_M || ostall_W);
 assign ostall_D=ostall_load_use_X_rs1_D || ostall_load_use_X_rs2_D;
+assign stall_D=(ostall_D || ostall_X || ostall_M || ostall_W);
 
-assign next_val_D=val_D && !stall_D;
+assign osquash_j_D=inst_op_D==op_jal || inst_op_D==op_jalr;
+assign osquash_D=val_D && !stall_D && osquash_j_D;
+assign squash_D=val_D && osquash_X;
 
-assign reg_en_D=!stall_D;
+assign reg_en_D=!stall_D || squash_D;
+assign next_val_D=val_D && !stall_D && !squash_D;
 
 rv2isa_InstUnpack u_InstUnpack(
   .inst   (inst_D   ),
@@ -230,7 +257,7 @@ rv2isa_InstUnpack u_InstUnpack(
   .rs2    (inst_rs2_D    ),
   .funct3 ( ),
   .funct7 ( ),
-  .csr    (    )
+  .csr    (inst_csr_D)
 );
 
 assign bypass_waddr_X_rs1_D=val_D && val_X && inst_op_X!=op_lw &&
@@ -258,7 +285,6 @@ task oid(
     input op1_sel,
     input [1:0] op2_sel,
     input rf_wen,
-    input [1:0] csrr_sel,
     input [1:0] er,
     input wr
 );
@@ -267,42 +293,73 @@ task oid(
   op1_sel_D=op1_sel;
   op2_sel_D=op2_sel;
   rf_wen_D=rf_wen;
-  csrr_sel_D=csrr_sel;
 
   ex_result_sel_X=er;
   wb_result_sel_D=wr;
 endtask
 
 always @(*) begin
-  casez(inst_D) //      op      imm   op1     op2   rfw,csr er wr  
-  `RV2ISA_INST_LW   :oid(alu_add,imm_i,op1_rf,op2_imm,y,0,er_a,wr_m);
-  `RV2ISA_INST_SW   :oid(alu_add,imm_s,op1_rf,op2_imm,n,0,er_a,wr_a);
-  `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_OR   :oid(alu_or ,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_XOR  :oid(alu_xor,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SLT  :oid(alu_lt ,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,0,er_a,wr_a);
-  `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_ORI  :oid(alu_or ,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_XORI :oid(alu_xor,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_SLTI :oid(alu_lt ,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_SLTIU:oid(alu_ltu,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_SRAI :oid(alu_sra,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_SRLI :oid(alu_srl,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_SLLI :oid(alu_sll,imm_i,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_LUI  :oid(alu_op2,imm_u,op1_rf,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_AUIPC:oid(alu_add,imm_u,op1_pc,op2_imm,y,0,er_a,wr_a);
-  `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,0,er_a,wr_a);
-  default           :oid(alu_add,0,    op1_rf,op2_rf ,n,0,er_a,wr_a);
+  casez(inst_D) //      op      imm   op1     op2   rfw,er wr  
+  `RV2ISA_INST_JAL  :oid(alu_add,imm_u,op1_rf,op2_rf ,y,er_p,wr_a);
+  `RV2ISA_INST_JALR :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_p,wr_a);
+  `RV2ISA_INST_BEQ  :oid(alu_eq ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BNE  :oid(alu_eq ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BLT  :oid(alu_lt ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BGE  :oid(alu_lt ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BLTU :oid(alu_ltu,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BGEU :oid(alu_ltu,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_CSRR :oid(alu_op2,imm_i,op1_rf,op2_csr,y,er_a,wr_a);
+  `RV2ISA_INST_CSRW :oid(alu_op1,imm_i,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_LW   :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_a,wr_m);
+  `RV2ISA_INST_SW   :oid(alu_add,imm_s,op1_rf,op2_imm,n,er_a,wr_a);
+  `RV2ISA_INST_ADD  :oid(alu_add,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SUB  :oid(alu_sub,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_AND  :oid(alu_and,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_OR   :oid(alu_or ,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_XOR  :oid(alu_xor,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SLT  :oid(alu_lt ,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_ORI  :oid(alu_or ,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_XORI :oid(alu_xor,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_SLTI :oid(alu_lt ,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_SLTIU:oid(alu_ltu,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_SRAI :oid(alu_sra,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_SRLI :oid(alu_srl,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_SLLI :oid(alu_sll,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_LUI  :oid(alu_op2,imm_u,op1_rf,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_AUIPC:oid(alu_add,imm_u,op1_pc,op2_imm,y,er_a,wr_a);
+  `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,er_a,wr_a);
+  default           :oid(alu_add,0,    op1_rf,op2_rf ,n,er_a,wr_a);
   endcase
 end
 
+// branch type decode
+always @(*) begin
+  if(inst_op_D=='b1100011)
+    br_type_D=[`RV2ISA_INST_FUNCT3]
+  else
+    br_type_D=0;
+end
+
+// csrr related logic
+// mngr->proc interface
+assign mngr2proc_rdy=1;
+// inner logic
+always @(*) begin
+  csrr_sel_D=0;
+  if(inst_D==`RV2ISA_INST_CSRW) begin
+    case(inst_csr_D)
+    `RV2ISA_CPR_NUMCORES:csrr_sel_D=0;
+    `RV2ISA_CPR_COREID:csrr_sel_D=1;
+    `RV2ISA_CPR_MNGR2PROC:csrr_sel_D=2;
+    endcase
+  end
+end
 
 /* STAGE X */
 pipe_reg #(.DW(1)) pipe_dx(
@@ -318,28 +375,51 @@ pipe_reg #(.DW(15)) pipe_rsAndrd_dx(clk,rst,1,{inst_rs1_D,inst_rs2_D,inst_rd_D},
 pipe_reg #(.DW(1)) pipe_rf_wen_dx(clk,rst,1,rf_wen_D,rf_wen_X);
 always @(posedge clk) begin
   if(rst) begin
+    br_type_X<=0;    
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
   end else begin
+    br_type_X<=br_type_D;
     ex_result_sel_X<=ex_result_sel_D;
     wb_result_sel_X<=wb_result_sel_D;
   end
 end
 
-assign stall_X=(ostall_X || ostall_M || ostall_W);
 assign ostall_X=0;
+assign stall_X=(ostall_X || ostall_M || ostall_W);
 
-assign next_val_X=val_X && !stall_X;
+assign osquash_take_branch_X=val_X && inst_op_X=='b1100011 && pc_redirect_X;
+assign osquash_X=osquash_take_branch_X;
+assign squash_X=0;
 
-assign reg_en_X=!stall_X;
+assign reg_en_X=!stall_X || squash_X;
+assign next_val_X=val_X && !stall_X &&!squash_X;
 
+// branch logic
+always @(*) begin
+  if(inst_op_X=='b1100011) begin
+    pc_sel_X=1;
+    case(br_type_X)
+    'b000:pc_redirect_X=br_cond_eq_X;
+    'b001:pc_redirect_X=!br_cond_eq_X;
+    'b100:pc_redirect_X=br_cond_lt_X;
+    'b101:pc_redirect_X=!br_cond_lt_X;
+    'b110:pc_redirect_X=br_cond_ltu_X;
+    'b111:pc_redirect_X=!br_cond_ltu_X;
+    endcase
+  end else begin
+    pc_redirect_X=0;
+    pc_sel_X=0;
+  end
+end
+
+// mem access
 assign dmemreq_val=inst_op_X==op_lw || inst_op_X==op_sw;
 assign dmemreq_type_X=inst_op_X==op_sw;
 assign dmemresp_rdy=1;
 
 
 /* STAGE M */
-//pipe_reg_wrv #(1) pipe_xm(clk, reset, reg_en_M, val_M, next_val_X, 0);
 pipe_reg #(.DW(1)) pipe_xm(
   clk, reset, reg_en_M, next_val_X, val_M
 );

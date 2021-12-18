@@ -15,10 +15,10 @@
 `define ALU_OP2 12
 `define ALU_EQ  13
 
-`define PC_SEL_P4_F     0
-`define PC_SEL_JAL_D    1
-`define PC_SEL_BR_X     2
-`define PC_SEL_JALR_X   3
+`define PC_SEL_P4_F     3
+`define PC_SEL_JAL_D    2
+`define PC_SEL_BR_X     1
+`define PC_SEL_JALR_X   0
 
 `define IMM_GEN_I       0
 `define IMM_GEN_S       1

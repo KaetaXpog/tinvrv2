@@ -1,7 +1,9 @@
 `include "vc/mem-msgs.v"
 `include "defines.v"
 
-module proc_dpath(
+module proc_dpath #(
+    parameter NUM_CORES=1
+)(
     input  logic         clk,
     input  logic         reset,
 
@@ -224,8 +226,10 @@ module proc_dpath(
     end
     always @(*) begin: csrr_sel_mux
         if(csrr_sel_D==0)
-            ;
+            csrr_sel_mux_D=NUM_CORES;
         else if(csrr_sel_D==1)
+            csrr_sel_mux_D=0;   // TODO: coreid set to 0
+        else if(csrr_sel_D==2)
             csrr_sel_mux_D= mngr2proc_msg;
     end
 
@@ -237,8 +241,8 @@ module proc_dpath(
     pipe_reg #(.DW(32)) pipe_op2_DX(clk, rst, reg_en_X, op2_sel_mux_D, op2_reg_X       );
     pipe_reg #(.DW(32)) pipe_dmem_wdata_DX(clk, rst, reg_en_X, op2_rf_bypass_mux_D, dmemreq_msg.data);
 
-    assign br_target_X= br_target_X;
-    assign jalr_target_X=0;
+    assign br_target_X= br_target_reg_X;
+    assign jalr_target_X={alu_out_X[31:1],1'b0};
 
     assign pc_incr_X=pc_reg_X+4;
 

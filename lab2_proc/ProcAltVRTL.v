@@ -59,7 +59,7 @@ module lab2_proc_ProcAltVRTL
 
   // control signals
   logic reg_en_F;
-  logic pc_sel_F;
+  logic [1:0] pc_sel_F;
 
   logic reg_en_D;
   logic [31:0] inst_D;

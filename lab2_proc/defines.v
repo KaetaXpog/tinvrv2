@@ -23,6 +23,8 @@
 `define IMM_GEN_I       0
 `define IMM_GEN_S       1
 `define IMM_GEN_U       2
+`define IMM_GEN_SB      3
+`define IMM_GEN_UJ      4
 
 `define OP1_SEL_RF0     0
 `define OP1_SEL_PC      1

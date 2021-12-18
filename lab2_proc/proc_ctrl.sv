@@ -48,7 +48,7 @@ module proc_ctrl(
 
   // Control signals
   output logic reg_en_F,
-  output logic pc_sel_F,
+  output logic [1:0] pc_sel_F,
 
   output logic reg_en_D,
   input logic [31:0] inst_D,
@@ -124,6 +124,10 @@ localparam er_p = 0,
 // W stage result sel
 localparam wr_a = 0,
   wr_m=1;
+
+// opcode types
+logic opcode_branch_D;
+logic opcode_branch_X;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
 wire imemresp_handshake=imemresp_val && imemresp_rdy;
@@ -228,11 +232,19 @@ assign squash_F=val_F && (osquash_D||osquash_X);
 assign reg_en_F=!stall_F ||squash_F;
 assign next_val_F=val_F && !stall_F && !squash_F;
 
+// pc sel output logic
+always @(*) begin
+  if(pc_redirect_X)
+    pc_sel_F=pc_sel_X;
+  else if(pc_redirect_D)
+    pc_sel_F=pc_sel_D;
+  else
+    pc_sel_F=3;
+end
 
-assign pc_sel_F=`PC_SEL_P4_F;
-
+// imem access
 assign imemreq_val=1;
-
+assign imemresp_rdy=1;
 
 /* STAGE D */
 pipe_reg #(.DW(1)) pipe_fd(
@@ -339,9 +351,10 @@ always @(*) begin
 end
 
 // branch type decode
+assign opcode_branch_D=inst_op_D=='b1100011;
 always @(*) begin
-  if(inst_op_D=='b1100011)
-    br_type_D=[`RV2ISA_INST_FUNCT3]
+  if(opcode_branch_D)
+    br_type_D=inst_D[`RV2ISA_INST_FUNCT3];
   else
     br_type_D=0;
 end
@@ -361,7 +374,7 @@ always @(*) begin
   end
 end
 
-/* STAGE X */
+/* STAGE X ***************************************************/
 pipe_reg #(.DW(1)) pipe_dx(
   clk, reset, reg_en_X, next_val_D, val_X
 );
@@ -375,10 +388,12 @@ pipe_reg #(.DW(15)) pipe_rsAndrd_dx(clk,rst,1,{inst_rs1_D,inst_rs2_D,inst_rd_D},
 pipe_reg #(.DW(1)) pipe_rf_wen_dx(clk,rst,1,rf_wen_D,rf_wen_X);
 always @(posedge clk) begin
   if(rst) begin
-    br_type_X<=0;    
+    opcode_branch_X<=0;
+    br_type_X<=0;
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
   end else begin
+    opcode_branch_X<=opcode_branch_D;
     br_type_X<=br_type_D;
     ex_result_sel_X<=ex_result_sel_D;
     wb_result_sel_X<=wb_result_sel_D;
@@ -388,16 +403,16 @@ end
 assign ostall_X=0;
 assign stall_X=(ostall_X || ostall_M || ostall_W);
 
-assign osquash_take_branch_X=val_X && inst_op_X=='b1100011 && pc_redirect_X;
+assign osquash_take_branch_X=val_X && opcode_branch_X && pc_redirect_X;
 assign osquash_X=osquash_take_branch_X;
 assign squash_X=0;
 
 assign reg_en_X=!stall_X || squash_X;
-assign next_val_X=val_X && !stall_X &&!squash_X;
+assign next_val_X=val_X && !stall_X && !squash_X;
 
 // branch logic
 always @(*) begin
-  if(inst_op_X=='b1100011) begin
+  if(opcode_branch_X) begin
     pc_sel_X=1;
     case(br_type_X)
     'b000:pc_redirect_X=br_cond_eq_X;
@@ -444,7 +459,7 @@ assign next_val_M=val_M && !stall_M;
 assign reg_en_M=!stall_M;
 
 
-/* STAGE W */
+/* STAGE W **************************************************************/
 //pipe_reg_wrv #(1) pipe_mw(clk, reset, reg_en_W, val_W, next_val_M, 0);
 pipe_reg #(.DW(1)) pipe_mw(
   clk,reset,reg_en_W,next_val_M,val_W
@@ -453,7 +468,13 @@ pipe_reg #(.DW(1)) pipe_mw(
 pipe_reg #(.DW(7)) pipe_op_mw(clk,rst,1,inst_op_M,inst_op_W);
 pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,1,{inst_rs1_M,inst_rs2_M,inst_rd_M},
   {inst_rs1_W,inst_rs2_W,inst_rd_W});
-pipe_reg #(.DW(1)) pipe_rf_wen_mw(clk,rst,1,rf_wen_M,rf_wen_W);
+always @(posedge clk) begin
+  if(rst) begin
+    rf_wen_W<=0;
+  end else begin
+    rf_wen_W<= val_M&&rf_wen_M;
+  end
+end
 
 assign stall_W=ostall_W;
 assign ostall_W=0;

@@ -49,11 +49,11 @@ module proc_dpath #(
 
     // control signals
     input reg_en_F,
-    input pc_sel_F,
+    input [1:0] pc_sel_F,
 
     input reg_en_D,
     output logic [31:0] inst_D,
-    input [1:0] imm_type_D,
+    input [2:0] imm_type_D,
     input op1_sel_D,
     input op2_sel_D,
     input csrr_sel_D,
@@ -189,6 +189,10 @@ module proc_dpath #(
         `IMM_GEN_I: imm_gen_D={{20{inst_D[31]}},inst_D[31:20]};
         `IMM_GEN_S: imm_gen_D={{20{inst_D[31]}},inst_D[31:25],inst_D[11:7]};
         `IMM_GEN_U: imm_gen_D={inst_D[31:12],12'b0};
+        `IMM_GEN_SB:imm_gen_D={{19{inst_D[31]}},inst_D[31],
+            inst_D[7],inst_D[30:25],inst_D[11:8],1'b0};
+        `IMM_GEN_UJ:imm_gen_D={{11{inst_D[31]}},inst_D[31],inst_D[19:12],
+            inst_D[20],inst_D[30:21]};
         endcase
     end
     assign pc_plus_imm_D=imm_gen_D+pc_reg_D;

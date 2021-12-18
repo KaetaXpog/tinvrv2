@@ -66,7 +66,7 @@ module lab2_proc_ProcAltVRTL
   logic [2:0] imm_type_D;
   logic op1_sel_D;
   logic op2_sel_D;
-  logic csrr_sel_D;
+  logic [1:0] csrr_sel_D;
   logic imul_req_val_D;
   logic imul_req_rdy_D;
 

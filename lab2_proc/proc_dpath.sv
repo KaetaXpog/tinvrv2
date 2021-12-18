@@ -86,7 +86,8 @@ module proc_dpath #(
     input rf_wen_W
 
 );
-    wire rst= reset;
+    logic rst;
+    assign rst=reset;
 
     /* STAGE F */
     logic [31:0] pc_reg_F;
@@ -104,7 +105,7 @@ module proc_dpath #(
     logic [31:0] op1_rf_bypass_mux_D, op2_rf_bypass_mux_D;
     logic [31:0] op1_sel_mux_D, op2_sel_mux_D;
     logic [31:0] csrr_sel_mux_D;
-    logic jal_target_D;
+    logic [31:0] jal_target_D;
 
 
     /* STAGE X */
@@ -145,12 +146,14 @@ module proc_dpath #(
 
     assign pc_F=pc_reg_F;
     assign pc_incr_F=pc_F+4;
+    assign jal_target_D=pc_plus_imm_D;
     always @(*) begin
         case(pc_sel_F)
         `PC_SEL_P4_F    : pc_next_F=pc_incr_F;
         `PC_SEL_JAL_D   : pc_next_F=jal_target_D;
         `PC_SEL_BR_X    : pc_next_F=br_target_X;
         `PC_SEL_JALR_X  : pc_next_F=jalr_target_X;
+        default:pc_next_F=0;
         endcase
     end
 
@@ -162,13 +165,14 @@ module proc_dpath #(
 
 
     /* STAGE D */
-    always @(posedge clk) begin
-        if(reset) begin
+    always @(posedge clk,posedge rst) begin
+        if(rst) begin
             pc_reg_D<=0;
             inst_reg_D<=0;
-        end else if(reg_en_D)
+        end else if(reg_en_D) begin
             pc_reg_D<=pc_F;
             inst_reg_D<=imemresp_msg.data;
+        end
     end
     assign inst_D=inst_reg_D;
 
@@ -185,6 +189,7 @@ module proc_dpath #(
     );
 
     always @(*) begin: imm_gen
+        imm_gen_D=0;
         case(imm_type_D)
         `IMM_GEN_I: imm_gen_D={{20{inst_D[31]}},inst_D[31:20]};
         `IMM_GEN_S: imm_gen_D={{20{inst_D[31]}},inst_D[31:25],inst_D[11:7]};
@@ -193,6 +198,7 @@ module proc_dpath #(
             inst_D[7],inst_D[30:25],inst_D[11:8],1'b0};
         `IMM_GEN_UJ:imm_gen_D={{11{inst_D[31]}},inst_D[31],inst_D[19:12],
             inst_D[20],inst_D[30:21],1'b0};
+        default:imm_gen_D=0;
         endcase
     end
     assign pc_plus_imm_D=imm_gen_D+pc_reg_D;
@@ -266,6 +272,7 @@ module proc_dpath #(
         0: ex_result_sel_mux_X=pc_incr_X;
         1: ex_result_sel_mux_X=alu_out_X;
         2: ex_result_sel_mux_X=0;
+        default:ex_result_sel_mux_X=0;
         endcase
     end
 
@@ -283,6 +290,7 @@ module proc_dpath #(
         case(wb_result_sel_M)
         `WR_SEL_ALU: wb_result_sel_mux_M=ex_result_reg_M;
         `WR_SEL_MEM: wb_result_sel_mux_M=dmemresp_msg.data;
+        default:wb_result_sel_mux_M=0;
         endcase
     end
 

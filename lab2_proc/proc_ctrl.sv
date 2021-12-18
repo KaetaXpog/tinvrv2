@@ -129,6 +129,7 @@ localparam wr_a = 0,
 
 // opcode types
 logic opcode_branch_D;
+logic opcode_jal_D;
 logic opcode_branch_X;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
@@ -168,7 +169,6 @@ logic squash_M;
 logic squash_W;
 
 logic pc_redirect_D;
-logic [1:0] pc_sel_D;
 logic [2:0] br_type_D;
 logic [3:0] alu_fn_D;
 logic [6:0] inst_op_D;
@@ -239,7 +239,7 @@ always @(*) begin
   if(pc_redirect_X)
     pc_sel_F=pc_sel_X;
   else if(pc_redirect_D)
-    pc_sel_F=pc_sel_D;
+    pc_sel_F=2;
   else
     pc_sel_F=3;
 end
@@ -308,7 +308,7 @@ task oid(
   op2_sel_D=op2_sel;
   rf_wen_D=rf_wen;
 
-  ex_result_sel_X=er;
+  ex_result_sel_D=er;
   wb_result_sel_D=wr;
 endtask
 
@@ -350,6 +350,12 @@ always @(*) begin
   `RV2ISA_INST_NOP  :oid(alu_add,0,    op1_rf,op2_imm,y,er_a,wr_a);
   default           :oid(alu_add,0,    op1_rf,op2_rf ,n,er_a,wr_a);
   endcase
+end
+
+// jal logic
+assign opcode_jal_D=inst_op_D=='b1101111;
+always @(*) begin
+  pc_redirect_D=val_D&&opcode_jal_D;
 end
 
 // branch type decode
@@ -423,6 +429,7 @@ always @(*) begin
     'b101:pc_redirect_X=!br_cond_lt_X;
     'b110:pc_redirect_X=br_cond_ltu_X;
     'b111:pc_redirect_X=!br_cond_ltu_X;
+    default:pc_redirect_X=0;
     endcase
   end else begin
     pc_redirect_X=0;

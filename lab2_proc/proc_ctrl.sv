@@ -52,7 +52,7 @@ module proc_ctrl(
 
   output logic reg_en_D,
   input logic [31:0] inst_D,
-  output logic [1:0] imm_type_D,
+  output logic [2:0] imm_type_D,
   output logic op1_sel_D,
   output logic [1:0] op2_sel_D,
   output logic [1:0] csrr_sel_D,
@@ -108,7 +108,9 @@ localparam alu_add = 1,
 localparam imm_i = 0,
   imm_s=1,
   imm_u=2,
-  imm_0=0;
+  imm_0=0,
+  imm_b=3,
+  imm_j=4;
 localparam op1_rf = 0,
   op1_pc=1;
 localparam op2_imm = 0,
@@ -312,14 +314,14 @@ endtask
 
 always @(*) begin
   casez(inst_D) //      op      imm   op1     op2   rfw,er wr  
-  `RV2ISA_INST_JAL  :oid(alu_add,imm_u,op1_rf,op2_rf ,y,er_p,wr_a);
+  `RV2ISA_INST_JAL  :oid(alu_add,imm_j,op1_rf,op2_rf ,y,er_p,wr_a);
   `RV2ISA_INST_JALR :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_p,wr_a);
-  `RV2ISA_INST_BEQ  :oid(alu_eq ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
-  `RV2ISA_INST_BNE  :oid(alu_eq ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
-  `RV2ISA_INST_BLT  :oid(alu_lt ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
-  `RV2ISA_INST_BGE  :oid(alu_lt ,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
-  `RV2ISA_INST_BLTU :oid(alu_ltu,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
-  `RV2ISA_INST_BGEU :oid(alu_ltu,imm_s,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BEQ  :oid(alu_eq ,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BNE  :oid(alu_eq ,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BLT  :oid(alu_lt ,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BGE  :oid(alu_lt ,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BLTU :oid(alu_ltu,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
+  `RV2ISA_INST_BGEU :oid(alu_ltu,imm_b,op1_rf,op2_rf ,n,er_a,wr_a);
   `RV2ISA_INST_CSRR :oid(alu_op2,imm_i,op1_rf,op2_csr,y,er_a,wr_a);
   `RV2ISA_INST_CSRW :oid(alu_op1,imm_i,op1_rf,op2_rf ,n,er_a,wr_a);
   `RV2ISA_INST_LW   :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_a,wr_m);

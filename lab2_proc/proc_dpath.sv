@@ -192,7 +192,7 @@ module proc_dpath #(
         `IMM_GEN_SB:imm_gen_D={{19{inst_D[31]}},inst_D[31],
             inst_D[7],inst_D[30:25],inst_D[11:8],1'b0};
         `IMM_GEN_UJ:imm_gen_D={{11{inst_D[31]}},inst_D[31],inst_D[19:12],
-            inst_D[20],inst_D[30:21]};
+            inst_D[20],inst_D[30:21],1'b0};
         endcase
     end
     assign pc_plus_imm_D=imm_gen_D+pc_reg_D;

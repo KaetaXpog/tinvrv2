@@ -104,7 +104,8 @@ localparam alu_add = 1,
   alu_sra=10,
   alu_op1=11,
   alu_op2=12,
-  alu_eq=13;
+  alu_eq=13,
+  alu_nop=0;
 localparam imm_i = 0,
   imm_s=1,
   imm_u=2,
@@ -131,8 +132,10 @@ localparam wr_a = 0,
 logic opcode_branch_D;
 logic opcode_jal_D;
 logic op_jalr_D;
+logic op_mul_D;
 logic opcode_branch_X;
 logic op_jalr_X;
+logic op_mul_X;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
 wire imemresp_handshake=imemresp_val && imemresp_rdy;
@@ -212,6 +215,7 @@ logic bypass_waddr_X_rs1_D;
 logic bypass_waddr_X_rs2_D;
 logic ostall_load_use_X_rs1_D;
 logic ostall_load_use_X_rs2_D;
+logic ostall_wait_imul_rdy_D;
 
 logic bypass_waddr_M_rs1_D;
 logic bypass_waddr_M_rs2_D;
@@ -219,6 +223,8 @@ logic bypass_waddr_W_rs1_D;
 logic bypass_waddr_W_rs2_D;
 
 logic osquash_j_D;
+
+logic ostall_wait_imul_val_X;
 logic osquash_take_branch_X;
 logic osquash_jalr_X;
 
@@ -256,7 +262,10 @@ pipe_reg #(.DW(1)) pipe_fd(
   clk, reset, reg_en_D, next_val_F, val_D
 );
 
-assign ostall_D=ostall_load_use_X_rs1_D || ostall_load_use_X_rs2_D;
+assign ostall_wait_imul_rdy_D=val_D && !imul_req_rdy_D;
+assign ostall_D=ostall_load_use_X_rs1_D || 
+  ostall_load_use_X_rs2_D ||
+  ostall_wait_imul_rdy_D;
 assign stall_D=(ostall_D || ostall_X || ostall_M || ostall_W);
 
 assign osquash_j_D=inst_op_D==op_jal || inst_op_D==op_jalr;
@@ -338,6 +347,7 @@ always @(*) begin
   `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_MUL  :oid(alu_nop,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
   `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
@@ -373,6 +383,18 @@ always @(*) begin
     br_type_D=0;
 end
 
+// TODO: imul access
+assign op_mul_D=inst_D[`RV2ISA_INST_OPCODE]=='b0110011&&
+  inst_D[`RV2ISA_INST_FUNCT3]=='b000&&
+  inst_D[`RV2ISA_INST_FUNCT7]=='b0000001;
+always @(*) begin
+  if(op_mul_D) begin
+    imul_req_val_D=!stall_D;
+  end else begin
+    imul_req_val_D=0;
+  end
+end
+
 // csrr related logic
 // mngr->proc interface
 assign mngr2proc_rdy=1;
@@ -405,6 +427,7 @@ always @(posedge clk) begin
     opcode_branch_X<=0;
     br_type_X<=0;
     op_jalr_X<=0;
+    op_mul_X<=0;
 
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
@@ -412,13 +435,15 @@ always @(posedge clk) begin
     opcode_branch_X<=opcode_branch_D;
     br_type_X<=br_type_D;
     op_jalr_X<=op_jalr_D;
+    op_mul_X<=op_mul_D;
 
     ex_result_sel_X<=ex_result_sel_D;
     wb_result_sel_X<=wb_result_sel_D;
   end
 end
 
-assign ostall_X=0;
+assign ostall_wait_imul_val_X=val_X && op_mul_X && !imul_resp_val_X;
+assign ostall_X=ostall_wait_imul_val_X;
 assign stall_X=(ostall_X || ostall_M || ostall_W);
 
 assign osquash_take_branch_X=val_X && opcode_branch_X && pc_redirect_X;
@@ -450,6 +475,9 @@ always @(*) begin
     pc_sel_X=0;
   end
 end
+
+// imul access
+assign imul_resp_rdy_X=val_X && !stall_X;
 
 // mem access
 assign dmemreq_val=inst_op_X==op_lw || inst_op_X==op_sw;

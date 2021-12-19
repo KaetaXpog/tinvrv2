@@ -1,6 +1,7 @@
 `ifndef __DEFINES_V
 `define __DEFINES_V
 
+`define ALU_NOP 0
 `define ALU_ADD 1
 `define ALU_SUB 2
 `define ALU_AND 3

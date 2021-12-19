@@ -106,13 +106,14 @@ module proc_dpath #(
     logic [31:0] op1_sel_mux_D, op2_sel_mux_D;
     logic [31:0] csrr_sel_mux_D;
     logic [31:0] jal_target_D;
-
+    logic [63:0] imul_req_msg_D;
 
     /* STAGE X */
     logic [31:0] pc_reg_X;
     logic [31:0] br_target_reg_X;
     logic [31:0] op1_reg_X, op2_reg_X;
     logic [31:0] dmem_write_data_reg_X;
+    logic [31:0] imul_resp_msg_X;
 
     logic [31:0] br_target_X;
     logic [31:0] jalr_target_X;
@@ -243,6 +244,19 @@ module proc_dpath #(
             csrr_sel_mux_D= mngr2proc_msg;
     end
 
+    // imul
+    assign imul_req_msg_D={op1_sel_mux_D,op2_sel_mux_D};
+    imul u_imul(
+    	.clk      (clk      ),
+        .rst      (rst      ),
+        .req_val  (imul_req_val_D  ),
+        .req_rdy  (imul_req_rdy_D  ),
+        .req_msg  (imul_req_msg_D  ),
+        .resp_val (imul_resp_val_X ),
+        .resp_rdy (imul_resp_rdy_X ),
+        .resp_msg (imul_resp_msg_X )
+    );
+    
 
     /* STAGE X */
     pipe_reg #(.DW(32)) pipe_br_target_DX(clk, rst, reg_en_X, pc_plus_imm_D, br_target_reg_X );
@@ -271,7 +285,7 @@ module proc_dpath #(
         case(ex_result_sel_X)
         0: ex_result_sel_mux_X=pc_incr_X;
         1: ex_result_sel_mux_X=alu_out_X;
-        2: ex_result_sel_mux_X=0;
+        2: ex_result_sel_mux_X=imul_resp_msg_X;
         default:ex_result_sel_mux_X=0;
         endcase
     end
@@ -294,7 +308,6 @@ module proc_dpath #(
         endcase
     end
 
-    
 
     /* STAGE W */
     pipe_reg #(.DW(32)) pipe_pc_MW(clk, rst, reg_en_W, pc_reg_M, pc_reg_W);

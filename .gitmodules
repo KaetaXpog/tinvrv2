@@ -1,3 +1,0 @@
-[submodule "software/riscv-assembler"]
-	path = software/riscv-assembler
-	url = https://github.com/kcelebi/riscv-assembler.git

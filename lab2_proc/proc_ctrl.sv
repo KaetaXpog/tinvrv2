@@ -295,7 +295,7 @@ assign ostall_load_use_X_rs2_D=val_D && val_X && rf_wen_X &&
 
 task oid(
     input [3:0] alu_fn,
-    input [1:0] imm_type,
+    input [2:0] imm_type,
     input op1_sel,
     input [1:0] op2_sel,
     input rf_wen,

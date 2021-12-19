@@ -216,7 +216,7 @@ module proc_dpath #(
         'b1??: op2_rf_bypass_mux_D=alu_out_X;
         'b01?: op2_rf_bypass_mux_D=wb_result_sel_mux_M;
         'b001: op2_rf_bypass_mux_D=rf_wdata_W;
-        default: op2_rf_bypass_mux_D=rf_rdata0_D;
+        default: op2_rf_bypass_mux_D=rf_rdata1_D;
         endcase
     end
 

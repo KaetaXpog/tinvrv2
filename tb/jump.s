@@ -12,4 +12,4 @@ ACC:
     addi $3,$3,-1
     jal $0,ACC
 END:
-    jal $0,-4
+    jal $0,END  # r1 SHOULD be 0x13ba

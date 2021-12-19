@@ -130,7 +130,9 @@ localparam wr_a = 0,
 // opcode types
 logic opcode_branch_D;
 logic opcode_jal_D;
+logic op_jalr_D;
 logic opcode_branch_X;
+logic op_jalr_X;
 
 wire imemreq_handshake=imemreq_val && imemreq_rdy;
 wire imemresp_handshake=imemresp_val && imemresp_rdy;
@@ -218,6 +220,7 @@ logic bypass_waddr_W_rs2_D;
 
 logic osquash_j_D;
 logic osquash_take_branch_X;
+logic osquash_jalr_X;
 
 
 /* STAGE F */
@@ -358,6 +361,9 @@ always @(*) begin
   pc_redirect_D=val_D&&opcode_jal_D;
 end
 
+// for X stage use
+// jalr logic
+assign op_jalr_D=inst_op_D=='b1100111 && inst_D[`RV2ISA_INST_FUNCT3]=='b000;
 // branch type decode
 assign opcode_branch_D=inst_op_D=='b1100011;
 always @(*) begin
@@ -398,11 +404,15 @@ always @(posedge clk) begin
   if(rst) begin
     opcode_branch_X<=0;
     br_type_X<=0;
+    op_jalr_X<=0;
+
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
   end else begin
     opcode_branch_X<=opcode_branch_D;
     br_type_X<=br_type_D;
+    op_jalr_X<=op_jalr_D;
+
     ex_result_sel_X<=ex_result_sel_D;
     wb_result_sel_X<=wb_result_sel_D;
   end
@@ -412,13 +422,14 @@ assign ostall_X=0;
 assign stall_X=(ostall_X || ostall_M || ostall_W);
 
 assign osquash_take_branch_X=val_X && opcode_branch_X && pc_redirect_X;
-assign osquash_X=osquash_take_branch_X;
+assign osquash_jalr_X=val_X && op_jalr_X && pc_redirect_X;
+assign osquash_X=osquash_take_branch_X || osquash_jalr_X;
 assign squash_X=0;
 
 assign reg_en_X=!stall_X || squash_X;
 assign next_val_X=val_X && !stall_X && !squash_X;
 
-// branch logic
+// branch and jal logic
 always @(*) begin
   if(opcode_branch_X) begin
     pc_sel_X=1;
@@ -431,6 +442,9 @@ always @(*) begin
     'b111:pc_redirect_X=!br_cond_ltu_X;
     default:pc_redirect_X=0;
     endcase
+  end else if(op_jalr_X) begin
+    pc_redirect_X=1;
+    pc_sel_X=0;
   end else begin
     pc_redirect_X=0;
     pc_sel_X=0;

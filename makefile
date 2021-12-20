@@ -1,5 +1,6 @@
 BUILD := build
 RVIASM := python ./software/RISCV-RV32I-Assembler/src/rvi.py
+AR     := python software/riscv-assembler/riscv_assembler/rvar_cli.py
 
 # default target
 proc.add:
@@ -7,7 +8,7 @@ proc.add:
 proc.%: 
 	make asm.$* tb.proc
 asm.%: tb/%.s
-	$(RVIASM) $< -o $(BUILD)/code.bin
+	$(AR) $< -o $(BUILD)/code.bin
 
 tb.%:
 	iverilog -g2012 -f flist.f -o build/$*_tb.vvp tb/$*_tb.sv

@@ -1,10 +1,10 @@
 # test bypass from X,M,W to D rs1
-addi $2,$0,2
-addi $1,$0,1
-addi $3,$1,2
-addi $4,$1,3
-addi $5,$1,4
-addi $6,$1,5
-addi $7,$1,6
-addi $8,$1,7
-addi $9,$1,8
+addi x2,x0,2
+addi x1,x0,1
+addi x3,x1,2
+addi x4,x1,3
+addi x5,x1,4
+addi x6,x1,5
+addi x7,x1,6
+addi x8,x1,7
+addi x9,x1,8

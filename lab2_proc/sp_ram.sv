@@ -47,7 +47,8 @@ module sp_ram
       end
     end
 
-    rdata_o <= mem[addr];
+    // TODO: update verilog lib
+    if(en_i) rdata_o <= mem[addr];
   end
 
   genvar w;

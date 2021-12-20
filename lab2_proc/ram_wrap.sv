@@ -44,6 +44,8 @@ module ram_wrap(
             req_addr<=req_msg.addr;
         end
     end
+
+    logic [31:0] ram_rdata;
     sp_ram 
     #(
         .ADDR_WIDTH (32 ),
@@ -55,15 +57,22 @@ module ram_wrap(
         .en_i    (!rst && req_val ),
         .addr_i  (req_msg.addr  ),
         .wdata_i (req_msg.data ),
-        .rdata_o (resp_msg.data ),
+        .rdata_o (ram_rdata ),
         .we_i    (we   ),
         .be_i    (4'hf    )
     );
 
-    assign resp_msg.type_=`VC_MEM_REQ_MSG_TYPE_READ;
-    assign resp_msg.opaque=0;
-    assign resp_msg.test=0;
-    assign resp_msg.len=0;
+    always @(*) begin
+        resp_msg.type_=`VC_MEM_REQ_MSG_TYPE_READ;
+        resp_msg.opaque=0;
+        resp_msg.test=0;
+        resp_msg.len=0;
+        if(rst) begin
+            resp_msg.data=0;
+        end else begin
+            resp_msg.data=ram_rdata;
+        end
+    end
 
     task loaddata(
         input string file

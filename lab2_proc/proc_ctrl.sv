@@ -209,7 +209,7 @@ logic [4:0] inst_rs1_W;
 logic [4:0] inst_rs2_W;
 logic [4:0] inst_rd_W;
 
-logic ostall_wait_data_F;
+logic ostall_wait_imem_rdy;
 
 logic bypass_waddr_X_rs1_D;
 logic bypass_waddr_X_rs2_D;
@@ -231,12 +231,13 @@ logic osquash_jalr_X;
 
 /* STAGE F */
 pipe_reg #(.DW(1)) pipe_f(
-  clk, reset, reg_en_F, imemreq_handshake, val_F
+  clk, reset, reg_en_F, 1, val_F
 );
 
-assign ostall_wait_data_F=imemreq_val && !imemreq_rdy;  // wait imem data
+logic ostall_wait_imem_data_F;
+assign ostall_wait_imem_data_F=val_F && !imemresp_val;
+assign ostall_F= ostall_wait_imem_data_F;
 assign stall_F=( ostall_F || ostall_D || ostall_X || ostall_M || ostall_W);
-assign ostall_F= ostall_wait_data_F;
 
 assign squash_F=val_F && (osquash_D||osquash_X);
 
@@ -254,8 +255,8 @@ always @(*) begin
 end
 
 // imem access
-assign imemreq_val=1;
-assign imemresp_rdy=1;
+assign imemreq_val=!rst&&(!stall_F||squash_F);
+assign imemresp_rdy=!stall_F||squash_F;
 
 /* STAGE D */
 pipe_reg #(.DW(1)) pipe_fd(
@@ -347,7 +348,7 @@ always @(*) begin
   `RV2ISA_INST_SRA  :oid(alu_sra,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_SRL  :oid(alu_srl,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_SLL  :oid(alu_sll,0    ,op1_rf,op2_rf, y,er_a,wr_a);
-  `RV2ISA_INST_MUL  :oid(alu_nop,0    ,op1_rf,op2_rf, y,er_a,wr_a);
+  `RV2ISA_INST_MUL  :oid(alu_nop,0    ,op1_rf,op2_rf, y,er_m,wr_a);
   `RV2ISA_INST_SLTU :oid(alu_ltu,0    ,op1_rf,op2_rf, y,er_a,wr_a);
   `RV2ISA_INST_ADDI :oid(alu_add,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
   `RV2ISA_INST_ANDI :oid(alu_and,imm_i,op1_rf,op2_imm,y,er_a,wr_a);
@@ -416,12 +417,12 @@ pipe_reg #(.DW(1)) pipe_dx(
 );
 
 pipe_reg #(.DW(4)) pipe_alu_fn_dx(
-  clk, reset, 1, alu_fn_D, alu_fn_X
+  clk, reset, reg_en_X, alu_fn_D, alu_fn_X
 );
-pipe_reg #(.DW(7)) pipe_op_dx(clk,rst,1,inst_op_D,inst_op_X);
-pipe_reg #(.DW(15)) pipe_rsAndrd_dx(clk,rst,1,{inst_rs1_D,inst_rs2_D,inst_rd_D},
+pipe_reg #(.DW(7)) pipe_op_dx(clk,rst,reg_en_X,inst_op_D,inst_op_X);
+pipe_reg #(.DW(15)) pipe_rsAndrd_dx(clk,rst,reg_en_X,{inst_rs1_D,inst_rs2_D,inst_rd_D},
   {inst_rs1_X,inst_rs2_X,inst_rd_X});
-pipe_reg #(.DW(1)) pipe_rf_wen_dx(clk,rst,1,rf_wen_D,rf_wen_X);
+pipe_reg #(.DW(1)) pipe_rf_wen_dx(clk,rst,reg_en_X,rf_wen_D,rf_wen_X);
 always @(posedge clk) begin
   if(rst) begin
     opcode_branch_X<=0;
@@ -431,7 +432,7 @@ always @(posedge clk) begin
 
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
-  end else begin
+  end else if(reg_en_X) begin
     opcode_branch_X<=opcode_branch_D;
     br_type_X<=br_type_D;
     op_jalr_X<=op_jalr_D;
@@ -490,24 +491,23 @@ pipe_reg #(.DW(1)) pipe_xm(
   clk, reset, reg_en_M, next_val_X, val_M
 );
 
-pipe_reg #(.DW(7)) pipe_op_xm(clk,rst,1,inst_op_X,inst_op_M);
-pipe_reg #(.DW(15)) pipe_rsAndrd_xm(clk,rst,1,{inst_rs1_X,inst_rs2_X,inst_rd_X},
+pipe_reg #(.DW(7)) pipe_op_xm(clk,rst,reg_en_M,inst_op_X,inst_op_M);
+pipe_reg #(.DW(15)) pipe_rsAndrd_xm(clk,rst,reg_en_M,{inst_rs1_X,inst_rs2_X,inst_rd_X},
   {inst_rs1_M,inst_rs2_M,inst_rd_M});
-pipe_reg #(.DW(1)) pipe_rf_wen_xm(clk,rst,1,rf_wen_X,rf_wen_M);
+pipe_reg #(.DW(1)) pipe_rf_wen_xm(clk,rst,reg_en_M,rf_wen_X,rf_wen_M);
 always @(posedge clk) begin
   if(rst) begin
     wb_result_sel_M<=0;
-  end else begin
+  end else if(reg_en_M) begin
     wb_result_sel_M<=wb_result_sel_X;
   end
 end
 
-assign stall_M=(ostall_M || ostall_W);
 assign ostall_M=0;
-
-assign next_val_M=val_M && !stall_M;
+assign stall_M=(ostall_M || ostall_W);
 
 assign reg_en_M=!stall_M;
+assign next_val_M=val_M && !stall_M;
 
 
 /* STAGE W **************************************************************/
@@ -516,13 +516,13 @@ pipe_reg #(.DW(1)) pipe_mw(
   clk,reset,reg_en_W,next_val_M,val_W
 );
 
-pipe_reg #(.DW(7)) pipe_op_mw(clk,rst,1,inst_op_M,inst_op_W);
-pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,1,{inst_rs1_M,inst_rs2_M,inst_rd_M},
+pipe_reg #(.DW(7)) pipe_op_mw(clk,rst,reg_en_W,inst_op_M,inst_op_W);
+pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,reg_en_W,{inst_rs1_M,inst_rs2_M,inst_rd_M},
   {inst_rs1_W,inst_rs2_W,inst_rd_W});
 always @(posedge clk) begin
   if(rst) begin
     rf_wen_W<=0;
-  end else begin
+  end else if(reg_en_W) begin
     rf_wen_W<= val_M&&rf_wen_M;
   end
 end

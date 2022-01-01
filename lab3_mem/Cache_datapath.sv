@@ -9,24 +9,20 @@
 `include "arithmetic.v"
 `include "muxes.v"
 
-module Cache_datapath
-#(
+module Cache_datapath #(
 	parameter p_idx_shamt = 0
-)
-(
+)(
 	//reset signal
 	input logic clk,
 	input logic reset,
 
 	//cache request
 	input mem_req_4B_t cachereq_msg,
-	
 	//cache response
 	output mem_resp_4B_t cacheresp_msg,
 	
 	//memory request
 	output mem_req_16B_t mem_req_msg,
-
 	//memory response
 	input mem_resp_16B_t memresp_msg,
 
@@ -131,13 +127,13 @@ vc_EnResetReg#(32,0)cachereq_addr_reg
 	.q(out_addr)
 );
 
-vc_EnResetReg#(32,,0)cahcereq_data_reg
+vc_EnResetReg#(32,0)cahcereq_data_reg
 (
 	.clk(clk),
 	.reset(reset),
 	.en(cachereq_en),
 	.d(in_data),
-	.q(out_data),
+	.q(out_data)
 );
 
 assign cachereq_addr = out_addr;
@@ -233,7 +229,7 @@ vc_EnResetReg#(1,0)victim_reg
 	.reset(reset),
 	.en(victim_reg_en),
 	.d(victim),
-	.q(victim_reg_out))
+	.q(victim_reg_out)
 );
 
 //2 bit muxfor the tag_match output and the victim select
@@ -252,13 +248,12 @@ logic [127:0] write_data_mux_output;
 
 assign write_data_mux_top = {4{out_data}};
 
-vc_Mux2#(128)write_data_mux
-{
+vc_Mux2#(128)write_data_mux(
 	.in0(write_data_mux_bottom),
 	.in1(write_data_mux_top),
 	.sel(write_data_mux_sel),
 	.out(write_data_mux_output)
-};
+);
 
 logic [127:0] data_array_read_data;
 logic [127:0] data_array_write_data;
@@ -277,7 +272,7 @@ vc_CombinationalArray_1rw#(128, 16)data_array
 	.read_data(data_array_read_data),
 	.write_en(data_array_wen),
 	.write_byte_en(data_array_wben),
-	.wrte_addr(data_array_idx),
+	.write_addr(data_array_idx),
 	.write_data(data_array_write_data)
 );
 

@@ -151,7 +151,7 @@ logic [27:0] tag_read_data1;
 
 logic [27:0] tag_write_data;
 
-assign idx 							= out_addr[6+p_idx_shamt:4+p_idx_shamt];
+assign idx = out_addr[6+p_idx_shamt:4+p_idx_shamt];
 assign tag_write_data = out_addr[31:4];
 
 vc_CombinationalBitTagArray_1rw#(28, 8)tag_array0

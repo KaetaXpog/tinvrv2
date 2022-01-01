@@ -3,6 +3,7 @@ doc/*
 build/*
 archive/*
 
+.vscode
 *.code-workspace
 
 tags

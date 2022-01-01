@@ -1,5 +1,5 @@
 +libext+.v+.sv
-+incdir+vc+lab2_proc
++incdir+vc+lab2_proc+lab3_mem
 
 -v lab2_proc/ProcAltVRTL.v
 -v lab2_proc/TinyRV2InstVRTL.v

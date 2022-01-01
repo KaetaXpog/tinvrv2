@@ -1,5 +1,6 @@
 `ifndef CACHE_CTRL
 `define CACHE_CTRL
+
 module Cache_ctrl
 #(
 	parameter p_idx_shamt = 0
@@ -69,4 +70,4 @@ module Cache_ctrl
 	input logic [2:0] idx
 );
 
-
+`endif // CACHE_CTRL

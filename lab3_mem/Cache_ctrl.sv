@@ -85,16 +85,24 @@ module Cache_ctrl #(
 	localparam S_EVICTWAIT = 10;
 
 	logic [7:0] valid[0:1]; // 2-way 8-block
+	logic [7:0] dirty[0:1];
 	logic [7:0] last_use; // last used line, to impl LRU
 
+	logic way_num;
+	logic read;
+	logic write;
 	logic read_hit;
 	logic write_hit;
 
 	logic [3:0] cs;
 
+	assign read=cachereq_type==`VC_MEM_REQ_MSG_TYPE_READ;
+	assign write=cachereq_type==`VC_MEM_REQ_MSG_TYPE_WRITE;
 	assign hit= valid[0][idx] && tag_match0 || valid[1][idx] && tag_match1;
-	assign read_hit= hit && cachereq_type==`VC_MEM_REQ_MSG_TYPE_READ;
-	assign write_hit = hit && cachereq_type==`VC_MEM_REQ_MSG_TYPE_WRITE;
+	assign read_hit= hit && read;
+	assign write_hit = hit && write;	
+	assign way_num=tag_match1;
+	assign victim = !last_use[idx];
 
 	always @(posedge clk) begin
 		if(rst) cs<=S_IDLE;
@@ -103,13 +111,66 @@ module Cache_ctrl #(
 			S_IDLE: if(cachereq_val) cs<=S_TAGCHECK;
 			S_TAGCHECK: if(read_hit) cs<=S_READACC;
 				else if(write_hit) cs<=S_WRITEACC;
-				else if // TODO
+				else if(!hit && !dirty[victim][idx]) cs<=S_REFILLREQ;
+				else if(!hit && dirty[victim][idx]) cs<=S_EVICTPP;
+			S_READACC: cs<=S_WAIT;
+			S_WRITEACC: cs<=S_WAIT;
+
+			S_REFILLREQ: if(memreq_rdy) cs<=S_REFILLWAIT;
+			S_REFILLWAIT: if(memresp_val) cs<=S_REFILLUPDATE;
+			S_REFILLUPDATE: if(write) cs<=S_WRITEACC;
+				else if(read) cs<=S_READACC;
+
+			S_EVICTPP: cs<=S_EVICTREQ;
+			S_EVICTREQ: if(memreq_rdy) cs<=S_EVICTWAIT;
+			S_EVICTWAIT: if(memresp_val) cs<=S_REFILLREQ;
 			default: cs<=S_IDLE;
 			endcase
 		end
 	end
 
 	assign cachereq_rdy= cs==S_IDLE;
+	assign cachereq_en= cachereq_val && cachereq_rdy;
+
+	assign cacheresp_val= cs==S_WAIT;
+
+	assign memreq_val= cs==S_EVICTREQ || cs==S_REFILLREQ;
+
+	assign memresp_rdy= cs==S_REFILLWAIT || cs==S_EVICTWAIT;
+	assign memresp_en= memresp_val && memresp_rdy;
+
+	// ctrl signals to datapath
+	always @(*) begin
+/*
+	
+	//Mux signals
+	output logic write_data_mux_sel,
+	
+	//Array enable signals
+	output logic tag_array_en,
+	output logic tag_array_wen0,
+	output logic tag_array_wen1,
+	output logic data_array_ren,
+	output logic data_array_wen,
+	output logic data_array_wben,
+	
+	//reg enables and mux signals after arrays
+	output logic read_data_mux_sel,
+	output logic read_data_reg_en,
+	output logic evict_addr_reg_en,
+	output logic memreq_addr_mux_sel,
+	output logic [1:0] read_word_mux_sel,
+
+	//Cache response and memory request interface
+	output logic [2:0] cacheresp_type,
+	output logic [2:0] memreq_type,
+	output logic cacheresp_data_mux_sel,
+	output logic mkaddr_mux_sel,
+	output logic hit,
+	output logic victim,
+	*/
+		write_data_mux_sel=
+	end
 endmodule
 
 `endif // CACHE_CTRL

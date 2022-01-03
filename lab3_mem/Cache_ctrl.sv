@@ -28,7 +28,7 @@ module Cache_ctrl #(
 	input logic memreq_rdy,
 	output logic [2:0] memreq_type,
 	output logic evict_addr_reg_en,	
-	output logic memreq_addr_mux_sel,
+	output logic memreq_addr_mux_sel, // 1-> evictaddr; 0-> mkaddr
 
 	//Memory response
 	input logic memresp_val,
@@ -86,6 +86,8 @@ module Cache_ctrl #(
 	logic write_hit;
 	logic [1:0] word_offset;
 	assign word_offset=cachereq_addr[3:2];
+	logic need_evict;
+	logic need_refill;
 
 	logic [3:0] cs;
 
@@ -95,6 +97,8 @@ module Cache_ctrl #(
 	assign read_hit= hit && read;
 	assign write_hit = hit && write;
 	assign victim = !last_use[idx];
+	assign need_evict=!hit && dirty[victim][idx];
+	assign need_refill=!hit && !dirty[victim][idx];
 
 	always @(posedge clk) begin
 		if(rst) begin 
@@ -109,8 +113,8 @@ module Cache_ctrl #(
 			S_IDLE: if(cachereq_val) cs<=S_TAGCHECK;
 			S_TAGCHECK: if(read_hit) cs<=S_READACC;
 				else if(write_hit) cs<=S_WRITEACC;
-				else if(!hit && !dirty[victim][idx]) cs<=S_REFILLREQ;
-				else if(!hit && dirty[victim][idx]) cs<=S_EVICTPP;
+				else if(need_refill) cs<=S_REFILLREQ;
+				else if(need_evict) cs<=S_EVICTPP;
 			S_READACC: begin 
 				cs<=S_WAIT;
 				last_use[idx]=idx_way;
@@ -178,7 +182,8 @@ module Cache_ctrl #(
 		S_TAGCHECK: begin
 			tag_array_ren=1;
 			tag_check_en=1;	// store match info
-			victim_reg_en=1; // store victim info
+			if(need_evict || need_refill) victim_reg_en=1; // store victim info
+			if(need_evict) evict_addr_reg_en=1;	
 		end
 		S_READACC: begin
 			victim_sel=0;	// use the matched way
@@ -208,6 +213,7 @@ module Cache_ctrl #(
 		S_REFILLREQ: begin
 			memreq_val=1;
 			memreq_type=`VC_MEM_REQ_MSG_TYPE_READ;
+			memreq_addr_mux_sel=0;	// addr
 		end
 		S_REFILLWAIT: begin
 			memresp_rdy=1;
@@ -224,7 +230,7 @@ module Cache_ctrl #(
 			'd3: data_array_wben='hf000;
 			default: data_array_wben='hx;
 			endcase
-			
+
 			if(idx_way==0) tag_array_wen0=1;
 			else if(idx_way==1) tag_array_wen1=1;
 		end
@@ -236,6 +242,7 @@ module Cache_ctrl #(
 		S_EVICTREQ: begin
 			memreq_val=1;
 			memreq_type=`VC_MEM_REQ_MSG_TYPE_WRITE;
+			memreq_addr_mux_sel=1;
 		end
 		S_EVICTWAIT: begin
 			memresp_rdy=1;

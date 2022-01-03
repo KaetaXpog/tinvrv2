@@ -5,7 +5,6 @@
 
 `include "vc/mem-msgs.v"
 `include "regs.v"
-`include "tagarray.v"
 `include "arithmetic.v"
 `include "muxes.v"
 
@@ -22,7 +21,7 @@ module Cache_datapath #(
     output mem_resp_4B_t cacheresp_msg,
     
     //memory request
-    output mem_req_16B_t mem_req_msg,
+    output mem_req_16B_t memreq_msg,
     //memory response
     input mem_resp_16B_t memresp_msg,
 
@@ -37,16 +36,12 @@ module Cache_datapath #(
     input logic tag_array_wen1,
     
     input logic tag_check_en,
-    
-    input logic [1:0] tag_check_hit,
-    output logic [1:0] tag_check_out,
-    input logic hit_reg_en,
-
     output logic tag_match0,
     output logic tag_match1,
-    
+    input logic tag_hit,
 
     //data array signals
+    input logic victim_reg_en,
     input logic victim,
     input logic victim_sel,
     input logic data_array_ren,
@@ -62,11 +57,9 @@ module Cache_datapath #(
     //refill request
     input logic memreq_addr_mux_sel,
     input logic [2:0] memreq_type,
-    
-    input logic memresp_data_reg_en,
     input logic evict_addr_reg_en,
 
-    input logic victim_reg_en
+    input logic memresp_data_reg_en
 );
 
     logic rst;
@@ -91,6 +84,7 @@ module Cache_datapath #(
     logic [31:0] in_addr;
     logic [31:0] in_data;
 
+    // cachereq reged value
     logic [7:0] out_opaque;
     logic [2:0] out_type;
     logic [31:0] out_addr;
@@ -146,7 +140,6 @@ assign cachereq_addr = out_addr;
 
 //TAG_CHECK state
 logic [2:0] idx;
-logic [3:0] byte_off;
 
 logic [27:0] tag_read_data0;
 logic [27:0] tag_read_data1;
@@ -172,8 +165,8 @@ tag_array #(
 );
 
 tag_array #(
-	.DW  (DW  ),
-	.NUM (NUM )
+	.DW  (28  ),
+	.NUM (8 )
 ) u_tag_array1 (
     .clk(clk),
     .rst(reset),
@@ -195,34 +188,19 @@ assign cmp_top_input             = out_addr[31:4];
 assign cmp_bottom_input0 = tag_read_data0;
 assign cmp_bottom_input1 = tag_read_data1;
 
-vc_EqComparator#(28)cmp0
+vc_EqComparator #(28) cmp0
 (
     .in0(cmp_top_input),
     .in1(cmp_bottom_input0),
     .out(tag_match0)
 );
 
-vc_EqComparator#(28)cmp1
+vc_EqComparator #(28) cmp1
 (
     .in0(cmp_top_input),
     .in1(cmp_bottom_input1),
     .out(tag_match1)
 );
-
-logic [1:0] hit_reg_in;
-logic [1:0] hit_reg_out;
-assign hit_reg_in = tag_check_hit;
-
-vc_EnResetReg#(2,0)hit_reg
-(
-    .clk(clk),
-    .reset(reset),
-    .en(hit_reg_en),
-    .d(hit_reg_in),
-    .q(hit_reg_out)
-);
-
-assign tag_check_out = hit_reg_out;
 
 logic tag_check_reg_out;
 vc_EnResetReg #(1,0) tag_check_reg
@@ -235,7 +213,7 @@ vc_EnResetReg #(1,0) tag_check_reg
 );
 
 logic victim_reg_out;
-vc_EnResetReg#(1,0)victim_reg
+vc_EnResetReg #(1,0) victim_reg
 (
     .clk(clk),
     .reset(reset),
@@ -245,7 +223,7 @@ vc_EnResetReg#(1,0)victim_reg
 );
 
 //2 bit muxfor the tag_match output and the victim select
-vc_Mux2#(1)tag_match_victim_mux
+vc_Mux2 #(1) tag_match_victim_mux
 (
     .in0(tag_check_reg_out),
     .in1(victim_reg_out),
@@ -275,10 +253,9 @@ assign data_array_write_data = write_data_mux_output;
 logic [3:0] data_array_idx;//index for data array
 assign data_array_idx = {idx_way, idx};
 
-
 data_array #(
-	.DW  (DW  ),
-	.NUM (NUM )
+	.DW  (128  ),
+	.NUM (16 )
 )u_data_array(
 	.clk           (clk           ),
 	.rst           (rst           ),
@@ -298,7 +275,7 @@ logic [127:0] out_read_data;
 logic [31:0] out_read_word;
 assign in_read_data = data_array_read_data;
 
-vc_EnResetReg#(128,0) read_data_reg
+vc_EnResetReg #(128,0) read_data_reg
 (
     .clk(clk),
     .reset(reset),
@@ -308,7 +285,7 @@ vc_EnResetReg#(128,0) read_data_reg
 );
 
 //read word mux
-vc_Mux5#(32)read_word_mux
+vc_Mux5 #(32) read_word_mux
 (
     .in0(32'b0),
     .in1(out_read_data[31:0]),
@@ -343,7 +320,7 @@ assign memreq_msg[174:172] = memreq_type;
 logic [127:0] memresp_data_in;
 logic [127:0] memresp_data_out;
 
-assign memresp_data_in = memresp+msg[127:0];
+assign memresp_data_in = memresp_msg[127:0];
 
 vc_EnResetReg#(128,0)memresp_data_reg
 (
@@ -357,7 +334,7 @@ vc_EnResetReg#(128,0)memresp_data_reg
 assign write_data_mux_bottom = memresp_data_out;
 
 //wait stage
-assign cacheresp_msg = {cachereq_type, out_opaque, tag_check_out, 2'b0, out_read_word};
+assign cacheresp_msg = {cachereq_type, out_opaque, 1'b0, tag_hit, 2'b0, out_read_word};
 
 //evict stage
 logic [31:0] mkaddr_evict;

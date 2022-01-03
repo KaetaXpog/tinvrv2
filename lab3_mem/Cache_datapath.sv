@@ -225,12 +225,12 @@ vc_EnResetReg#(2,0)hit_reg
 assign tag_check_out = hit_reg_out;
 
 logic tag_check_reg_out;
-vc_EnResetReg#(1,0)tag_check_reg
+vc_EnResetReg #(1,0) tag_check_reg
 (
     .clk(clk),
     .reset(reset),
     .en(tag_check_en),
-    .d(tag_match1),
+    .d(tag_match1 || ~tag_match0 && victim),
     .q(tag_check_reg_out)
 );
 
@@ -298,7 +298,7 @@ logic [127:0] out_read_data;
 logic [31:0] out_read_word;
 assign in_read_data = data_array_read_data;
 
-vc_EnResetReg#(128,0)read_data_reg
+vc_EnResetReg#(128,0) read_data_reg
 (
     .clk(clk),
     .reset(reset),

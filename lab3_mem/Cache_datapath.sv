@@ -31,7 +31,7 @@ module Cache_datapath #(
     output logic [2:0] cachereq_type,
     output logic [31:0] cachereq_addr,
 
-    //tag array signals
+    //tag array signals; 2 tag_array
     input logic tag_array_ren,
     input logic tag_array_wen0,
     input logic tag_array_wen1,
@@ -254,11 +254,11 @@ vc_Mux2#(1)tag_match_victim_mux
 );
 
 //STATE_ININ_DATA_ACCESS
-logic [127:0] write_data_mux_top;
-logic [127:0] write_data_mux_bottom;
+logic [127:0] write_data_mux_top;       // cachereq
+logic [127:0] write_data_mux_bottom;    // memresp
 logic [127:0] write_data_mux_output;
 
-assign write_data_mux_top = {4{out_data}};
+assign write_data_mux_top = {4{out_data}};  // use byte en
 
 vc_Mux2#(128)write_data_mux(
     .in0(write_data_mux_bottom),
@@ -275,18 +275,6 @@ assign data_array_write_data = write_data_mux_output;
 logic [3:0] data_array_idx;//index for data array
 assign data_array_idx = {idx_way, idx};
 
-vc_CombinationalArray_1rw#(128, 16)data_array
-(
-    .clk(clk),
-    .reset(reset),
-    .read_en(data_array_ren),
-    .read_addr(data_array_idx),
-    .read_data(data_array_read_data),
-    .write_en(data_array_wen),
-    .write_byte_en(data_array_wben),
-    .write_addr(data_array_idx),
-    .write_data(data_array_write_data)
-);
 
 data_array #(
 	.DW  (DW  ),

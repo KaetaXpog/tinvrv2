@@ -40,7 +40,7 @@ module Cache_ctrl #(
 	output logic read_data_reg_en,	
 	
 	//line index
-	input logic [2:0] idx
+	input logic [2:0] idx,
 	output logic hit,
 	output logic victim,	
 	//Array enable signals
@@ -50,9 +50,10 @@ module Cache_ctrl #(
 	input logic tag_match0,
 	input logic tag_match1,	
 
+	output logic data_array_way,
 	output logic data_array_ren,
 	output logic data_array_wen,
-	output logic data_array_wben,
+	output logic [15:0] data_array_wben,
 );
 	logic rst;
 	assign rst=reset;
@@ -69,6 +70,7 @@ module Cache_ctrl #(
 	localparam S_EVICTREQ = 9;
 	localparam S_EVICTWAIT = 10;
 
+	// TODO: update these regs
 	logic [7:0] valid[0:1]; // 2-way 8-block
 	logic [7:0] dirty[0:1];
 	logic [7:0] last_use; // last used line, to impl LRU
@@ -90,8 +92,14 @@ module Cache_ctrl #(
 	assign victim = !last_use[idx];
 
 	always @(posedge clk) begin
-		if(rst) cs<=S_IDLE;
-		else begin
+		if(rst) begin 
+			cs<=S_IDLE;
+			valid[0]<=0;
+			valid[1]<=0;
+			dirty[0]<=0;
+			dirty[1]<=0;
+			last_use<=0;
+		end else begin
 			case(cs)
 			S_IDLE: if(cachereq_val) cs<=S_TAGCHECK;
 			S_TAGCHECK: if(read_hit) cs<=S_READACC;
@@ -100,6 +108,7 @@ module Cache_ctrl #(
 				else if(!hit && dirty[victim][idx]) cs<=S_EVICTPP;
 			S_READACC: cs<=S_WAIT;
 			S_WRITEACC: cs<=S_WAIT;
+			S_WAIT: if(cacheresp_rdy) cs<=S_IDLE;
 
 			S_REFILLREQ: if(memreq_rdy) cs<=S_REFILLWAIT;
 			S_REFILLWAIT: if(memresp_val) cs<=S_REFILLUPDATE;
@@ -119,14 +128,10 @@ module Cache_ctrl #(
 
 	assign cacheresp_val= cs==S_WAIT;
 
-	assign memreq_val= cs==S_EVICTREQ || cs==S_REFILLREQ;
-
-	assign memresp_rdy= cs==S_REFILLWAIT || cs==S_EVICTWAIT;
-	assign memresp_en= memresp_val && memresp_rdy;
-
 	// ctrl signals to datapath
 	always @(*) begin
 		// TODO: CHECK default value here
+		// TODO: check way selection
 		tag_array_ren=0;
 		tag_array_wen0=0;
 		tag_array_wen1=0;
@@ -143,22 +148,51 @@ module Cache_ctrl #(
 		read_word_mux_sel=0;
 
 		cacheresp_type=0;
-		memreq_type=0;
-/*
-	
-	//Mux signals
-	//Array enable signals
-	//reg enables and mux signals after arrays
-	output logic read_data_reg_en,
-	output logic evict_addr_reg_en,
-	output logic memreq_addr_mux_sel,
-	output logic [1:0] read_word_mux_sel,
 
-	//Cache response and memory request interface
-	output logic [2:0] cacheresp_type,
-	output logic [2:0] memreq_type,
-	*/
-		write_data_mux_sel=
+		memreq_val=0;
+		memreq_type=0;
+
+		case(cs)
+		S_TAGCHECK: begin
+			tag_array_ren=1;
+		end
+		S_READACC: begin
+			data_array_ren=1;
+			read_data_reg_en=1;
+		end
+		S_WAIT: begin
+			if(read) begin
+				read_word_mux_sel=cachereq_addr[3:2];
+				cacheresp_type=`VC_MEM_REQ_MSG_TYPE_READ;
+			end else if(write) begin
+				cacheresp_type=`VC_MEM_REQ_MSG_TYPE_WRITE;
+			end
+		end
+		S_REFILLREQ: begin
+			memreq_val=1;
+			memreq_type=`VC_MEM_REQ_MSG_TYPE_READ;
+		end
+		S_REFILLWAIT: begin
+			memresp_rdy=1;
+			if(memresp_val) memresp_en=1;
+		end
+		S_REFILLUPDATE: begin
+			write_data_mux_sel=0;	// sel memresp
+			data_array_wen=1;
+			data_array_wben=16'hf;
+		end
+		S_EVICTPP: begin
+			read_data_reg_en=1;
+		end
+		S_EVICTREQ: begin
+			memreq_val=1;
+			memreq_type=`VC_MEM_REQ_MSG_TYPE_WRITE;
+		end
+		S_EVICTWAIT: begin
+			memresp_rdy=1;
+		end
+
+		endcase
 	end
 endmodule
 

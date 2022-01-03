@@ -254,8 +254,8 @@ vc_Mux2#(1)tag_match_victim_mux
 );
 
 //STATE_ININ_DATA_ACCESS
-logic [127:0] write_data_mux_top;       // cachereq
-logic [127:0] write_data_mux_bottom;    // memresp
+logic [127:0] write_data_mux_top;       // cachereq,1
+logic [127:0] write_data_mux_bottom;    // memresp,0
 logic [127:0] write_data_mux_output;
 
 assign write_data_mux_top = {4{out_data}};  // use byte en

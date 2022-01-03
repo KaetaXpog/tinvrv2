@@ -52,7 +52,7 @@ module Cache_datapath #(
     input logic data_array_ren,
     input logic data_array_wen,
     input logic [15:0] data_array_wben,
-    output logic idx_way,
+    output logic idx_way,   // the way data array is using
 
     //write data mux signal and read data reg&mux signals
     input logic write_data_mux_sel,

@@ -42,18 +42,23 @@ module Cache_ctrl #(
 	//line index
 	input logic [2:0] idx,
 	output logic hit,
+	output logic victim_reg_en,
 	output logic victim,	
 	//Array enable signals
 	output logic tag_array_ren,
 	output logic tag_array_wen0,
 	output logic tag_array_wen1,
+	output logic tag_check_en,
 	input logic tag_match0,
 	input logic tag_match1,	
 
-	output logic data_array_way,
+	// victim sel: data array 1->use victim way; 0->use match way
+	output logic victim_sel,
+	input logic idx_way,
+	input logic data_array_way,
 	output logic data_array_ren,
 	output logic data_array_wen,
-	output logic [15:0] data_array_wben,
+	output logic [15:0] data_array_wben
 );
 	logic rst;
 	assign rst=reset;
@@ -75,7 +80,6 @@ module Cache_ctrl #(
 	logic [7:0] dirty[0:1];
 	logic [7:0] last_use; // last used line, to impl LRU
 
-	logic way_num;
 	logic read;
 	logic write;
 	logic read_hit;
@@ -87,8 +91,7 @@ module Cache_ctrl #(
 	assign write=cachereq_type==`VC_MEM_REQ_MSG_TYPE_WRITE;
 	assign hit= valid[0][idx] && tag_match0 || valid[1][idx] && tag_match1;
 	assign read_hit= hit && read;
-	assign write_hit = hit && write;	
-	assign way_num=tag_match1;
+	assign write_hit = hit && write;
 	assign victim = !last_use[idx];
 
 	always @(posedge clk) begin
@@ -106,16 +109,30 @@ module Cache_ctrl #(
 				else if(write_hit) cs<=S_WRITEACC;
 				else if(!hit && !dirty[victim][idx]) cs<=S_REFILLREQ;
 				else if(!hit && dirty[victim][idx]) cs<=S_EVICTPP;
-			S_READACC: cs<=S_WAIT;
-			S_WRITEACC: cs<=S_WAIT;
+			S_READACC: begin 
+				cs<=S_WAIT;
+				last_use[idx]=idx_way;
+			end
+			S_WRITEACC: begin
+				cs<=S_WAIT;
+				dirty[idx_way]<=1;
+				last_use[idx]<=idx_way;
+			end
 			S_WAIT: if(cacheresp_rdy) cs<=S_IDLE;
 
 			S_REFILLREQ: if(memreq_rdy) cs<=S_REFILLWAIT;
 			S_REFILLWAIT: if(memresp_val) cs<=S_REFILLUPDATE;
-			S_REFILLUPDATE: if(write) cs<=S_WRITEACC;
+			S_REFILLUPDATE: begin
+				if(write) cs<=S_WRITEACC;
 				else if(read) cs<=S_READACC;
 
-			S_EVICTPP: cs<=S_EVICTREQ;
+				valid[idx_way][idx]<=1;
+				dirty[idx_way][idx]<=0;
+			end
+			S_EVICTPP: begin 
+				cs<=S_EVICTREQ;
+				valid[idx_way][idx]<=0;
+			end
 			S_EVICTREQ: if(memreq_rdy) cs<=S_EVICTWAIT;
 			S_EVICTWAIT: if(memresp_val) cs<=S_REFILLREQ;
 			default: cs<=S_IDLE;
@@ -132,10 +149,13 @@ module Cache_ctrl #(
 	always @(*) begin
 		// TODO: CHECK default value here
 		// TODO: check way selection
+		tag_check_en=0;
 		tag_array_ren=0;
 		tag_array_wen0=0;
 		tag_array_wen1=0;
 
+		victim_reg_en=0;
+		victim_sel=0;
 		data_array_ren=0;
 		data_array_wen=0;
 		data_array_wben=0;
@@ -155,10 +175,19 @@ module Cache_ctrl #(
 		case(cs)
 		S_TAGCHECK: begin
 			tag_array_ren=1;
+			tag_check_en=1;	// store match info
+			victim_reg_en=1; // store victim info
 		end
 		S_READACC: begin
+			victim_sel=0;	// use the matched way
 			data_array_ren=1;
 			read_data_reg_en=1;
+		end
+		S_WRITEACC: begin
+			victim_sel=0;
+			write_data_mux_sel=1;	// use cachereq data
+			data_array_wen=1;
+			data_array_wben=16'hf;
 		end
 		S_WAIT: begin
 			if(read) begin
@@ -178,10 +207,13 @@ module Cache_ctrl #(
 		end
 		S_REFILLUPDATE: begin
 			write_data_mux_sel=0;	// sel memresp
+			victim_sel=1;
 			data_array_wen=1;
 			data_array_wben=16'hf;
 		end
 		S_EVICTPP: begin
+			victim_sel=1;
+			data_array_ren=1;
 			read_data_reg_en=1;
 		end
 		S_EVICTREQ: begin

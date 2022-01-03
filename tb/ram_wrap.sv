@@ -1,7 +1,9 @@
 `include "vc/mem-msgs.v"
 
-// A 4B aligned, sync-read ram
-module ram_wrap(
+module ram_wrap #(
+    parameter DATA_WIDTH = 32,
+    parameter NUM_BYTES = 1024
+)(
     input clk,
     input rst,
     input mem_req_4B_t  req_msg,
@@ -49,8 +51,8 @@ module ram_wrap(
     sp_ram 
     #(
         .ADDR_WIDTH (32 ),
-        .DATA_WIDTH (32 ),
-        .NUM_BYTES  (1024  )
+        .DATA_WIDTH (DATA_WIDTH ),
+        .NUM_BYTES  (NUM_BYTES  )
     )
     u_sp_ram(
     	.clk     (clk     ),

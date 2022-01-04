@@ -133,12 +133,15 @@ Cache_datapath u_Cache_datapath(
   .cachereq_msg        (cachereq_msg        ),
   .cacheresp_msg       (cacheresp_msg       ),
   .memreq_msg          (memreq_msg          ),
+
+  .memresp_en (memresp_en),
   .memresp_msg         (memresp_msg         ),
 
   .cachereq_en         (cachereq_en         ),
   .cachereq_type       (cachereq_type       ),
   .cachereq_addr       (cachereq_addr       ),
 
+  .idx(idx),
   .tag_array_ren       (tag_array_ren       ),
   .tag_array_wen0      (tag_array_wen0      ),
   .tag_array_wen1      (tag_array_wen1      ),
@@ -147,6 +150,7 @@ Cache_datapath u_Cache_datapath(
   .tag_match1          (tag_match1          ),
   .tag_hit             (hit             ),
 
+  .victim_reg_en       (victim_reg_en),
   .victim              (victim              ),
   .victim_sel          (victim_sel          ),
   .data_array_ren      (data_array_ren      ),
@@ -159,9 +163,7 @@ Cache_datapath u_Cache_datapath(
 
   .memreq_addr_mux_sel (memreq_addr_mux_sel ),
   .memreq_type         (memreq_type         ),
-  .evict_addr_reg_en   (evict_addr_reg_en   ),
-
-  .memresp_data_reg_en (memresp_data_reg_en )
+  .evict_addr_reg_en   (evict_addr_reg_en   )
 );
 
 

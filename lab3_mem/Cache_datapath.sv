@@ -23,6 +23,7 @@ module Cache_datapath #(
     //memory request
     output mem_req_16B_t memreq_msg,
     //memory response
+    input logic memresp_en,
     input mem_resp_16B_t memresp_msg,
 
     //cache input register signals
@@ -30,6 +31,7 @@ module Cache_datapath #(
     output logic [2:0] cachereq_type,
     output logic [31:0] cachereq_addr,
 
+    output logic [2:0] idx,
     //tag array signals; 2 tag_array
     input logic tag_array_ren,
     input logic tag_array_wen0,
@@ -57,9 +59,7 @@ module Cache_datapath #(
     //refill request
     input logic memreq_addr_mux_sel,
     input logic [2:0] memreq_type,
-    input logic evict_addr_reg_en,
-
-    input logic memresp_data_reg_en
+    input logic evict_addr_reg_en
 );
 
     logic rst;
@@ -139,7 +139,6 @@ vc_EnResetReg#(32,0)cahcereq_data_reg
 assign cachereq_addr = out_addr;
 
 //TAG_CHECK state
-logic [2:0] idx;
 
 logic [27:0] tag_read_data0;
 logic [27:0] tag_read_data1;
@@ -208,7 +207,7 @@ vc_EnResetReg #(1,0) tag_check_reg
     .clk(clk),
     .reset(reset),
     .en(tag_check_en),
-    .d(tag_match1 || ~tag_match0 && victim),
+    .d(tag_hit && tag_match1 || ~tag_hit&&victim),
     .q(tag_check_reg_out)
 );
 
@@ -322,11 +321,11 @@ logic [127:0] memresp_data_out;
 
 assign memresp_data_in = memresp_msg[127:0];
 
-vc_EnResetReg#(128,0)memresp_data_reg
+vc_EnResetReg #(128,0) memresp_data_reg
 (
     .clk(clk),
     .reset(reset),
-    .en(memresp_data_reg_en),
+    .en(memresp_en),
     .d(memresp_data_in),
     .q(memresp_data_out)
 );

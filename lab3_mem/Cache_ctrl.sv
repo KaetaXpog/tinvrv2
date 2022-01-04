@@ -223,13 +223,7 @@ module Cache_ctrl #(
 			write_data_mux_sel=0;	// sel memresp
 			victim_sel=1;
 			data_array_wen=1;
-			case(word_offset)
-			'd0: data_array_wben='h000f;
-			'd1: data_array_wben='h00f0;
-			'd2: data_array_wben='h0f00;
-			'd3: data_array_wben='hf000;
-			default: data_array_wben='hx;
-			endcase
+			data_array_wben='hffff;
 
 			if(idx_way==0) tag_array_wen0=1;
 			else if(idx_way==1) tag_array_wen1=1;

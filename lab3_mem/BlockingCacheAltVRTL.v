@@ -48,7 +48,7 @@ module lab3_mem_BlockingCacheAltVRTL
 
 	//Cache response
 	logic [2:0] cacheresp_type;
-	logic [1:0] read_word_mux_sel;	
+	logic [2:0] read_word_mux_sel;	
 
 	//Memory request
 	logic [2:0] memreq_type;

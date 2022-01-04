@@ -21,7 +21,7 @@ module Cache_ctrl #(
 	output logic cacheresp_val,
 	input logic cacheresp_rdy,
 	output logic [2:0] cacheresp_type,
-	output logic [1:0] read_word_mux_sel,	
+	output logic [2:0] read_word_mux_sel,	
 
 	//Memory request
 	output logic memreq_val,

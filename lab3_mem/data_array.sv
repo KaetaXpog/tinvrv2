@@ -22,7 +22,7 @@ module data_array #(
     end
 
     genvar i;
-    generate for(i=0;i<DW/8-1;i=i+1) begin
+    generate for(i=0;i<DW/8;i=i+1) begin
         always @(posedge clk) begin
             if(rst) ;
             else if(write_en) begin

@@ -45,13 +45,16 @@ interface cache_if(
         end
     endtask
     task readInSeq;
-        logic [7:0] len;
-        logic [7:0] addr;
-        len=10;
-        for(addr=0;addr<len;addr+=16) begin
+        logic [31:0] len;
+        logic [31:0] addr;
+        len=3333;
+        for(addr=0;addr<len;addr=addr+4) begin
             readreq(addr);
+
             @(posedge clk);
-            while(~cacheresp_val) @(posedge clk);
+            while(~cachereq_rdy) @(posedge clk);
+            cachereq_val<=0;
+
             @(negedge clk);
         end
     endtask

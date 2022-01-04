@@ -8,3 +8,4 @@
 -y lab2_proc
 -y lab3_mem
 -y vc
+-y tb

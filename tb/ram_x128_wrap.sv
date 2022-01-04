@@ -1,13 +1,13 @@
 `include "vc/mem-msgs.v"
 
-module ram_wrap (
+module ram_x128_wrap (
     input clk,
     input rst,
-    input mem_req_4B_t  req_msg,
+    input mem_req_16B_t  req_msg,
     input               req_val,
     output logic        req_rdy,
 
-    output mem_resp_4B_t resp_msg,
+    output mem_resp_16B_t resp_msg,
     output logic        resp_val,
     input               resp_rdy
 );
@@ -44,10 +44,10 @@ module ram_wrap (
         end
     end
 
-    logic [31:0] ram_rdata;
+    logic [127:0] ram_rdata;
     sp_ram #(
         .ADDR_WIDTH (32 ),
-        .DATA_WIDTH (32 ),
+        .DATA_WIDTH (128 ),
         .NUM_BYTES  (1024  )
     )u_sp_ram(
     	.clk     (clk     ),
@@ -56,7 +56,7 @@ module ram_wrap (
         .wdata_i (req_msg.data ),
         .rdata_o (ram_rdata ),
         .we_i    (we   ),
-        .be_i    (4'hf    )
+        .be_i    (16'hf    )
     );
 
     always @(*) begin
@@ -75,6 +75,12 @@ module ram_wrap (
         input string file
     );
         $readmemb(file, u_sp_ram.mem);
+    endtask
+
+    task loadHexData(
+        input string file
+    );
+        $readmemh(file, u_sp_ram.mem);
     endtask
     
 endmodule

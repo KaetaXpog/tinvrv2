@@ -4,7 +4,7 @@ AR     := python software/riscv-assembler/riscv_assembler/rvar_cli.py
 
 # default target
 proc.add:
-
+cache: tb.cache
 proc.%: 
 	make asm.$* tb.proc
 asm.%: tb/%.s

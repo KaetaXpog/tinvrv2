@@ -12,11 +12,12 @@ interface cache_if(
 
     task init;
         cachereq_val=0;
+        cachereq_msg=0;
     endtask
     task readreq(
         input [31:0] addr
     );
-        cachereq_val=0;
+        cachereq_val=1;
         cachereq_msg.type_=`VC_MEM_REQ_MSG_TYPE_READ;
         cachereq_msg.opaque=0;
         cachereq_msg.addr=addr;

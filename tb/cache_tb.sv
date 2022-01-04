@@ -60,6 +60,9 @@ initial begin
 end
 initial begin
   u_mem.loadHexData("cram.hex");
+  $dumpfile("cache_tb.vcd");
+  $dumpvars;
+
   cif.init();
   rst=1;
 
@@ -70,6 +73,12 @@ initial begin
   cif.readInSeq();
 
   repeat(100) @(negedge clk);
+  $finish;
+end
+
+initial begin
+  repeat(1000) @(negedge clk);
+  $display("ERROR: TIMEOUT");
   $finish;
 end
 

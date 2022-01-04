@@ -79,6 +79,12 @@ module Cache_ctrl #(
 	logic [7:0] valid[0:1]; // 2-way 8-block
 	logic [7:0] dirty[0:1];
 	logic [7:0] last_use; // last used line, to impl LRU
+	// these just for debug!---------------------------------
+	wire [7:0] valid_way0=valid[0];
+	wire [7:0] valid_way1=valid[1];
+	wire [7:0] dirty_way0=dirty[0];
+	wire [7:0] dirty_way1=dirty[1];
+	// end for debug ----------------------------------------
 
 	logic read;
 	logic write;
@@ -121,7 +127,7 @@ module Cache_ctrl #(
 			end
 			S_WRITEACC: begin
 				cs<=S_WAIT;
-				dirty[idx_way]<=1;
+				dirty[idx_way][idx]<=1;
 				last_use[idx]<=idx_way;
 			end
 			S_WAIT: if(cacheresp_rdy) cs<=S_IDLE;

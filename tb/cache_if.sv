@@ -44,12 +44,27 @@ interface cache_if(
             end
         end
     endtask
-    task readInSeq;
-        logic [31:0] len;
+    task readInSeq(
+        input integer readWordNum
+    );
         logic [31:0] addr;
-        len=3333;
-        for(addr=0;addr<len;addr=addr+4) begin
+        for(addr=0;addr<4*readWordNum;addr=addr+4) begin
             readreq(addr);
+
+            @(posedge clk);
+            while(~cachereq_rdy) @(posedge clk);
+            cachereq_val<=0;
+
+            @(negedge clk);
+        end
+    endtask
+    task writeInSeq(
+        input integer writeWordNum
+    );
+        // write word index into each word
+        logic [31:0] addr;
+        for(addr=0;addr<4*writeWordNum;addr+=4) begin
+            writereq(addr,addr);
 
             @(posedge clk);
             while(~cachereq_rdy) @(posedge clk);

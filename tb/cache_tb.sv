@@ -70,14 +70,19 @@ initial begin
   rst=0;
 
   repeat(3) @(negedge clk);
-  cif.readInSeq();
+  $display("START read sequence -------------------------------\n");
+  cif.readInSeq(100);
+
+  repeat(3) @(negedge clk);
+  $display("START write sequence ------------------------------\n");
+  cif.writeInSeq(100);
 
   repeat(100) @(negedge clk);
   $finish;
 end
 
 initial begin
-  repeat(1000) @(negedge clk);
+  repeat(2000) @(negedge clk);
   $display("ERROR: TIMEOUT");
   $finish;
 end

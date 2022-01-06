@@ -1,8 +1,6 @@
-from typing import List
 import chain
 import argparse
-
-from tb.chain import times
+from chain import Chain
 
 def hexFormat(i:int,length:int)->str:
     res=hex(i)
@@ -13,7 +11,7 @@ def hexFormat(i:int,length:int)->str:
 class GenRAMData:
     def __init__(self):
         pass
-    def gendata(self)->List:
+    def gendata(self)->list:
         res=[]
         for i in range(1024):
             res.append(hexFormat(i%256,2))
@@ -39,16 +37,31 @@ def organizeDataFrom32bTo128b(ifname,ofname):
     lines=[]
     with open(ifname) as ifile:
         lines=ifile.readlines()
-    lines=chain.Chain(lines).filter(
-        lambda x:x!="").map(
-            str.strip).pad(
-                chain.times
+    print(len(lines))
+    lines=chain.Chain(lines).filter(lambda x:x!=""
+        ).map(str.strip)
+    print(lines)
+    lines=Chain(lines).pad(chain.times(len,4),'0'*32
+        )
+    print(lines)
+    lines=Chain(lines).divide(4)
+    print(lines)
+    lines=Chain(lines).map(chain.Chain.reverse)
+    lines=chain.Chain(lines).map(
+        lambda xs: "".join(xs)+"\n").reduce(
+            lambda xs: "".join(xs))
+    with open(ofname,'w') as ofile:
+        ofile.write(lines.unpack())
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
-    parser.add_argument('-g','--gen_cache',help='gen cache hex file')
-    parser.add_argument('-r','--reorder',help='reorganize code to 128bits')
+    parser.add_argument('-g','--gen_cache',
+        action='store_true',help='gen cache hex file')
+    parser.add_argument('-r','--reorder',
+        action='store_true',help='reorganize code to 128bits')
     args=parser.parse_args()
-    if args.gen_chche:
+    if args.gen_cache:
         GenRAMData().do('../build/cram.hex')
     if args.reorder:
-
+        organizeDataFrom32bTo128b("../build/code.bin",
+            "../build/code.128b"
+        )

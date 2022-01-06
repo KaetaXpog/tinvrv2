@@ -1,12 +1,21 @@
+import copy
+
 class Data:
     def __init__(self,d):
         self.d=d
     def op(self,f):
         return Data(f(self.d))
+    def unpack(self):
+        return self.d
 
 class Chain(list,Data):
     def add(self,xs: list):
         return Chain(self+xs)
+    def reverse(self):
+        """TODO: replace this realization"""
+        tmp=list(copy.deepcopy(self))
+        tmp.reverse()
+        return tmp
     def pad(self,cond,e):
         if cond(self):
             return self
@@ -23,7 +32,8 @@ class Chain(list,Data):
         return Chain(filter(cond,self))
     def map(self,func):
         return Chain(map(func,self))
-
+    def reduce(self,func):
+        return Data(func(self))
     
 def times(func,num):
     def f(xs):

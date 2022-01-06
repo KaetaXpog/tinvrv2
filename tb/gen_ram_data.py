@@ -1,5 +1,8 @@
 from typing import List
+import chain
+import argparse
 
+from tb.chain import times
 
 def hexFormat(i:int,length:int)->str:
     res=hex(i)
@@ -32,5 +35,20 @@ class GenRAMData:
     def do(self,fname):
         self.writeToFile(self.organizeData(self.gendata()),fname)
 
+def organizeDataFrom32bTo128b(ifname,ofname):
+    lines=[]
+    with open(ifname) as ifile:
+        lines=ifile.readlines()
+    lines=chain.Chain(lines).filter(
+        lambda x:x!="").map(
+            str.strip).pad(
+                chain.times
 if __name__=='__main__':
-    GenRAMData().do('../build/cram.hex')
+    parser=argparse.ArgumentParser()
+    parser.add_argument('-g','--gen_cache',help='gen cache hex file')
+    parser.add_argument('-r','--reorder',help='reorganize code to 128bits')
+    args=parser.parse_args()
+    if args.gen_chche:
+        GenRAMData().do('../build/cram.hex')
+    if args.reorder:
+

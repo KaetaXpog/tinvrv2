@@ -91,8 +91,20 @@ module procwc_tb;
         clk=0; forever #50 clk=~clk;
     end
     initial begin
+        rst=1;
+        repeat(5) @(negedge clk);
+        rst=0;
+    end
+    initial begin
         // TODO
-        u_imem.loadHexData
+        u_imem.loadData("bin","code.128b");
+        $dumpfile("procwc_tb.vcd");
+        $dumpvars;
+    end
+    initial begin
+        repeat(1000) @(posedge clk);
+        $display("timeout");
+        $finish;
     end
 
 endmodule

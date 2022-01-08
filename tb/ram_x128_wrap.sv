@@ -71,10 +71,12 @@ module ram_x128_wrap (
         end
     end
 
-    task loaddata(
+    task loadData(
+        input string format,
         input string file
     );
-        $readmemb(file, u_sp_ram.mem);
+        if(format=="bin" || format=="") $readmemb(file, u_sp_ram.mem);
+        else if(format=="hex") $readmemh(file, u_sp_ram.mem);
     endtask
 
     task loadHexData(

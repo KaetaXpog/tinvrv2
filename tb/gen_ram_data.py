@@ -52,10 +52,17 @@ if __name__=='__main__':
         action='store_true',help='gen cache hex file')
     parser.add_argument('-r','--reorder',
         action='store_true',help='reorganize code to 128bits')
+    parser.add_argument('--ifname',help='input file name')
+    parser.add_argument('-o','--ofname',help='output file name')
     args=parser.parse_args()
     if args.gen_cache:
         GenRAMData().do('../build/cram.hex')
     if args.reorder:
-        organizeDataFrom32bTo128b("../build/code.bin",
-            "../build/code.128b"
+        assert args.ifname!=None and args.ofname!=None
+        # organizeDataFrom32bTo128b("./build/code.bin",
+        #     "./build/code.128b"
+        # )
+        organizeDataFrom32bTo128b(
+            args.ifname,
+            args.ofname
         )

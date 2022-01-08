@@ -39,14 +39,8 @@ def organizeDataFrom32bTo128b(ifname,ofname):
         lines=ifile.readlines()
     print(len(lines))
     lines=chain.Chain(lines).filter(lambda x:x!=""
-        ).map(str.strip)
-    print(lines)
-    lines=Chain(lines).pad(chain.times(len,4),'0'*32
-        )
-    print(lines)
-    lines=Chain(lines).divide(4)
-    print(lines)
-    lines=Chain(lines).map(chain.Chain.reverse)
+        ).map(str.strip).pad(chain.times(len,4),'0'*32
+        ).divide(4).map(chain.Chain.reverse)
     lines=chain.Chain(lines).map(
         lambda xs: "".join(xs)+"\n").reduce(
             lambda xs: "".join(xs))

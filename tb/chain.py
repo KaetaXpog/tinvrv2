@@ -8,6 +8,20 @@ class Data:
     def unpack(self):
         return self.d
 
+class Func:
+    def __init__(self, f):
+        self.f=f
+        self.next=None
+    def __call__(self, *args, **kwds):
+        return self.f(*args, **kwds)
+    def next(self, g):
+        self.next=g
+    def apply(self,d):
+        if self.next==None:
+            return self(d)
+        else:
+            return self.next(self(d))
+
 class Chain(list,Data):
     def add(self,xs: list):
         return Chain(self+xs)

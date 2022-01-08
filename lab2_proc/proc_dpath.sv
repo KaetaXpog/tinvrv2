@@ -55,7 +55,7 @@ module proc_dpath #(
     output logic [31:0] inst_D,
     input [2:0] imm_type_D,
     input op1_sel_D,
-    input op2_sel_D,
+    input [1:0] op2_sel_D,
     input csrr_sel_D,
     input imul_req_val_D,
     output imul_req_rdy_D,
@@ -140,6 +140,7 @@ module proc_dpath #(
     /* STAGE F */
     always @(posedge clk) begin
         if(reset)
+            // TODO: modify addr here 0x200
             pc_reg_F<=-4;
         else if(reg_en_F)
             pc_reg_F<=pc_next_F; 

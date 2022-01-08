@@ -230,8 +230,10 @@ logic osquash_jalr_X;
 
 
 /* STAGE F */
+logic expect_inst;
+assign expect_inst=!( ~stall_F && imemreq_val && !imemreq_rdy);
 pipe_reg #(.DW(1)) pipe_f(
-  clk, reset, reg_en_F, 1, val_F
+  clk, reset, 1'b1, expect_inst, val_F
 );
 
 logic ostall_wait_imem_data_F;
@@ -241,7 +243,7 @@ assign stall_F=( ostall_F || ostall_D || ostall_X || ostall_M || ostall_W);
 
 assign squash_F=val_F && (osquash_D||osquash_X);
 
-assign reg_en_F=!stall_F ||squash_F;
+assign reg_en_F= val_F && !stall_F || squash_F;
 assign next_val_F=val_F && !stall_F && !squash_F;
 
 // pc sel output logic
@@ -255,7 +257,7 @@ always @(*) begin
 end
 
 // imem access
-assign imemreq_val=!rst&&(!stall_F||squash_F);
+assign imemreq_val=!rst&&(!stall_F||squash_F) || !val_F;
 assign imemresp_rdy=!stall_F||squash_F;
 
 /* STAGE D */

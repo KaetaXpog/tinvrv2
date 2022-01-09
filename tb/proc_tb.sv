@@ -104,7 +104,7 @@ module proc_tb;
         rst=1;
         repeat(5) @(posedge clk);
         rst=0;
-        mif.justAdd42;
+        mif.getExpectedThenExpect;
     end
     initial begin
         imem.loaddata("code.bin");

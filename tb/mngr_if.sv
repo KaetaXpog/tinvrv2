@@ -21,7 +21,8 @@ interface mngr_if(
     endtask
 
     task expected(
-        input [31:0] value
+        input [31:0] value,
+        input logic en_exit=0
     );
         logic got;
         got=0;
@@ -33,15 +34,23 @@ interface mngr_if(
         if(proc2mngr_msg!=value) begin
             $display("[mngr ERROR] expected: %h, got: %h",
                 value,proc2mngr_msg);
+            repeat(50) @(posedge clk);
+            $finish;
         end else begin
             $display("[mngr INFO] got expected: %h",
                 proc2mngr_msg);
+            if(en_exit) begin
+                $display("[mngr INFO] PASS!!!!!");
+                repeat(50) @(posedge clk);
+                $finish;
+            end
         end
     endtask
 
     task setThenExpect(
         input [31:0] valueSend,
-        input [31:0] valueExpect
+        input [31:0] valueExpect,
+        input logic en_exit=0
     );
         setValue(valueSend);
         expected(valueExpect);
@@ -49,6 +58,23 @@ interface mngr_if(
 
     task justAdd42;
         setThenExpect('d33,'d33+'d42);
+    endtask
+
+    // at the start of program, it give the expeceted value to
+    // mngr; at the end of the program, it give the result to
+    // mngr; the MNGR compares the expected value with result.
+    // with this task, the system can check by itself :)
+    task getExpectedThenExpect(
+        input en_exit=1
+    );
+        logic init;
+        init=0;
+        while (~init) @(posedge clk) begin
+            if(proc2mngr_val && proc2mngr_rdy) init=1;
+        end
+        @(posedge clk);
+        $display("[mngr INFO] FLAG: %h", proc2mngrReg);
+        expected(proc2mngrReg,en_exit);
     endtask
 
 

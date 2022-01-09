@@ -113,7 +113,7 @@ module proc_tb;
     end
 
     initial begin
-        repeat(1000) @(posedge clk);
+        repeat(4000) @(posedge clk);
         $display("timeout");
         $finish;
     end

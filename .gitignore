@@ -1,5 +1,5 @@
 # TODO: how to track a dir without out track it's content
-doc/*
+doc/private
 build/*
 archive/*
 

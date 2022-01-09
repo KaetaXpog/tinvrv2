@@ -45,18 +45,20 @@ module proc_tb;
 
     logic         commit_inst;
 
+    mngr_if mif(clk,rst);
+
     lab2_proc_ProcAltVRTL #(
         .p_num_cores (1 )
     )
     u_proc(
         .clk           (clk           ),
         .reset         (rst         ),
-        .mngr2proc_msg (mngr2proc_msg ),
-        .mngr2proc_val (mngr2proc_val ),
-        .mngr2proc_rdy (mngr2proc_rdy ),
-        .proc2mngr_msg (proc2mngr_msg ),
-        .proc2mngr_val (proc2mngr_val ),
-        .proc2mngr_rdy (proc2mngr_rdy ),
+        .mngr2proc_msg (mif.mngr2proc_msg ),
+        .mngr2proc_val (mif.mngr2proc_val ),
+        .mngr2proc_rdy (mif.mngr2proc_rdy ),
+        .proc2mngr_msg (mif.proc2mngr_msg ),
+        .proc2mngr_val (mif.proc2mngr_val ),
+        .proc2mngr_rdy (mif.proc2mngr_rdy ),
         .imemreq_msg   (imemreq_msg   ),
         .imemreq_val   (imemreq_val   ),
         .imemreq_rdy   (imemreq_rdy   ),
@@ -102,6 +104,7 @@ module proc_tb;
         rst=1;
         repeat(5) @(posedge clk);
         rst=0;
+        mif.justAdd42;
     end
     initial begin
         imem.loaddata("code.bin");

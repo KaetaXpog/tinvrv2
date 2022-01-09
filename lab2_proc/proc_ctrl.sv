@@ -303,6 +303,7 @@ assign bypass_waddr_M_rs2_D=val_D && val_M &&
 assign bypass_waddr_W_rs2_D=val_D && val_W && 
   rf_wen_W && inst_rs2_D==inst_rd_W;
 
+// TODO: stall when proc need mngr2proc but it's not ready
 assign ostall_load_use_X_rs1_D=val_D && val_X && rf_wen_X &&
   inst_rs1_D==inst_rd_X && inst_rd_X!=0 && inst_op_X==op_lw;
 assign ostall_load_use_X_rs2_D=val_D && val_X && rf_wen_X &&
@@ -399,18 +400,28 @@ always @(*) begin
 end
 
 // csrr related logic
+logic op_csrw_D;
+logic op_csrw_X;
+logic op_csrw_M;
+logic op_csrw_W;
 // mngr->proc interface
 assign mngr2proc_rdy=1;
 // inner logic
 always @(*) begin
   csrr_sel_D=0;
-  if(inst_D==`RV2ISA_INST_CSRW) begin
+  op_csrw_D=0;
+  casez(inst_D)
+  `RV2ISA_INST_CSRR: begin
     case(inst_csr_D)
     `RV2ISA_CPR_NUMCORES:csrr_sel_D=0;
     `RV2ISA_CPR_COREID:csrr_sel_D=1;
     `RV2ISA_CPR_MNGR2PROC:csrr_sel_D=2;
     endcase
+  end 
+  `RV2ISA_INST_CSRW: begin
+    op_csrw_D=1;
   end
+  endcase
 end
 
 /* STAGE X ***************************************************/
@@ -431,6 +442,7 @@ always @(posedge clk) begin
     br_type_X<=0;
     op_jalr_X<=0;
     op_mul_X<=0;
+    op_csrw_X<=0;
 
     ex_result_sel_X<=0;
     wb_result_sel_X<=0;
@@ -439,6 +451,7 @@ always @(posedge clk) begin
     br_type_X<=br_type_D;
     op_jalr_X<=op_jalr_D;
     op_mul_X<=op_mul_D;
+    op_csrw_X<=op_csrw_D;
 
     ex_result_sel_X<=ex_result_sel_D;
     wb_result_sel_X<=wb_result_sel_D;
@@ -499,8 +512,12 @@ pipe_reg #(.DW(15)) pipe_rsAndrd_xm(clk,rst,reg_en_M,{inst_rs1_X,inst_rs2_X,inst
 pipe_reg #(.DW(1)) pipe_rf_wen_xm(clk,rst,reg_en_M,rf_wen_X,rf_wen_M);
 always @(posedge clk) begin
   if(rst) begin
+    op_csrw_M<=0;
+
     wb_result_sel_M<=0;
   end else if(reg_en_M) begin
+    op_csrw_M<=op_csrw_X;
+
     wb_result_sel_M<=wb_result_sel_X;
   end
 end
@@ -523,8 +540,12 @@ pipe_reg #(.DW(15)) pipe_rsAndrd_mw(clk,rst,reg_en_W,{inst_rs1_M,inst_rs2_M,inst
   {inst_rs1_W,inst_rs2_W,inst_rd_W});
 always @(posedge clk) begin
   if(rst) begin
+    op_csrw_W<=0;
+
     rf_wen_W<=0;
   end else if(reg_en_W) begin
+    op_csrw_W<=op_csrw_M;
+
     rf_wen_W<= val_M&&rf_wen_M;
   end
 end
@@ -536,7 +557,13 @@ assign next_val_W=val_W && !stall_W;
 
 assign reg_en_W=!stall_W;
 
+// reg file: write back
 assign rf_waddr_W=inst_rd_W;
 
+// write csr; we ASSUME that no stats_en here
+assign proc2mngr_val=val_W && op_csrw_W;
+
+// ASSUME always enabled here
+assign stats_en_wen_W=1;
 
 endmodule

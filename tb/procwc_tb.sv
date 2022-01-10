@@ -106,7 +106,7 @@ module procwc_tb;
     end
     initial begin
         repeat(4000) @(posedge clk);
-        $display("timeout");
+        $display("[tb ERROR] timeout");
         $finish;
     end
 

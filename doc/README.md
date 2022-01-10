@@ -49,6 +49,19 @@ $ make proc.loop    # 使用proc DUT运行loop.s汇编文件
 $ make procwc.loop  # 使用proc_with_cache DUT运行loop.s汇编文件
 $ make all.loop     # 两个都用......
 ```
+
+如果使用了上述“检查结果正确性”的编程约定，且运行程序得出的结果和预期一致时，
+会输出：
+```
+[mngr INFO] FLAG: 0000567c
+[mngr INFO] got expected: 0000567c
+[mngr INFO] ----------------------------------
+[mngr INFO] PASS!!!!!
+```
+如果报 mngr ERROR，说明计算结果和预期值不一样。如果报 tb ERROR timeout，可能是
+时间太短，还没有完成计算，这种情况在tb里调大最大仿真时间；也可能是有bug导致
+一直无法给出结果。
+
 #### 查看波形
 波形文件在 build 目录，VCD格式，可以使用 GTKWave 打开。
 

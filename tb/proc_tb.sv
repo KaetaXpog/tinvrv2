@@ -114,7 +114,7 @@ module proc_tb;
 
     initial begin
         repeat(4000) @(posedge clk);
-        $display("timeout");
+        $display("[tb ERROR] timeout");
         $finish;
     end
 endmodule 

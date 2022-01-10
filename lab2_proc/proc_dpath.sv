@@ -46,10 +46,11 @@ module proc_dpath #(
     // stats output
 
     output logic         commit_inst,
+    input logic [31:0]   boot_addr,
 
     // control signals
     input reg_en_F,
-    input [1:0] pc_sel_F,
+    input [2:0] pc_sel_F,
 
     input reg_en_D,
     output logic [31:0] inst_D,
@@ -141,7 +142,7 @@ module proc_dpath #(
     always @(posedge clk) begin
         if(reset)
             // TODO: modify addr here 0x200
-            pc_reg_F<=-4;
+            pc_reg_F<=boot_addr;
         else if(reg_en_F)
             pc_reg_F<=pc_next_F;
     end
@@ -155,6 +156,7 @@ module proc_dpath #(
         `PC_SEL_JAL_D   : pc_next_F=jal_target_D;
         `PC_SEL_BR_X    : pc_next_F=br_target_X;
         `PC_SEL_JALR_X  : pc_next_F=jalr_target_X;
+        'd4             : pc_next_F=pc_reg_F;
         default:pc_next_F=0;
         endcase
     end

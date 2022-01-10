@@ -29,28 +29,30 @@ module procwc_tb;
     // Data Memory Request Port
 
     mem_req_16B_t  dmemreq_msg;
-    logic         dmemreq_val;
-    logic         dmemreq_rdy;
+    logic          dmemreq_val;
+    logic          dmemreq_rdy;
 
     // Data Memory Response Port
 
     mem_resp_16B_t dmemresp_msg;
-    logic         dmemresp_val;
-    logic         dmemresp_rdy;
+    logic          dmemresp_val;
+    logic          dmemresp_rdy;
 
     // stats 
 
     logic         commit_inst;
 
+    mngr_if mif(clk,rst);
+
     proc_with_cache u_proc_with_cache(
     	.clk           (clk           ),
         .reset         (rst         ),
-        .mngr2proc_msg (mngr2proc_msg ),
-        .mngr2proc_val (mngr2proc_val ),
-        .mngr2proc_rdy (mngr2proc_rdy ),
-        .proc2mngr_msg (proc2mngr_msg ),
-        .proc2mngr_val (proc2mngr_val ),
-        .proc2mngr_rdy (proc2mngr_rdy ),
+        .mngr2proc_msg (mif.mngr2proc_msg ),
+        .mngr2proc_val (mif.mngr2proc_val ),
+        .mngr2proc_rdy (mif.mngr2proc_rdy ),
+        .proc2mngr_msg (mif.proc2mngr_msg ),
+        .proc2mngr_val (mif.proc2mngr_val ),
+        .proc2mngr_rdy (mif.proc2mngr_rdy ),
         .imemreq_msg   (imemreq_msg   ),
         .imemreq_val   (imemreq_val   ),
         .imemreq_rdy   (imemreq_rdy   ),
@@ -94,6 +96,7 @@ module procwc_tb;
         rst=1;
         repeat(5) @(negedge clk);
         rst=0;
+        mif.getExpectedThenExpect;
     end
     initial begin
         // TODO
@@ -102,7 +105,7 @@ module procwc_tb;
         $dumpvars;
     end
     initial begin
-        repeat(1000) @(posedge clk);
+        repeat(4000) @(posedge clk);
         $display("timeout");
         $finish;
     end

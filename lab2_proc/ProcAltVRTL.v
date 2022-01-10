@@ -59,7 +59,7 @@ module lab2_proc_ProcAltVRTL
 
   // control signals
   logic reg_en_F;
-  logic [1:0] pc_sel_F;
+  logic [2:0] pc_sel_F;
 
   logic reg_en_D;
   logic [31:0] inst_D;
@@ -189,6 +189,8 @@ proc_dpath u_proc_dpath(
   .dmemresp_rdy    (    ),
 
   .commit_inst     (     ),
+  .boot_addr       ('h0),
+  
   .reg_en_F        (reg_en_F        ),
   .pc_sel_F        (pc_sel_F        ),
   .reg_en_D        (reg_en_D        ),

@@ -7,10 +7,14 @@
 # x5: FLAG
 li x1, 0
 add x2,x1,x0
-li x3, 150
-li x5, 0x115693
+####################################
+# some value pairs
+# 150   0x115693  
+# 10    0x181
+# 40    0x567c
+li x3, 40
+li x5, 0x567c
 li x4, 0
-
 csrw 0x7c0, x5
 ACC:
     addi x1, x1, 1

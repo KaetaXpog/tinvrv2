@@ -40,6 +40,7 @@ interface mngr_if(
             $display("[mngr INFO] got expected: %h",
                 proc2mngr_msg);
             if(en_exit) begin
+                $display("[mngr INFO] ----------------------------------");
                 $display("[mngr INFO] PASS!!!!!");
                 repeat(50) @(posedge clk);
                 $finish;

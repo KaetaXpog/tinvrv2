@@ -48,7 +48,7 @@ module proc_ctrl(
 
   // Control signals
   output logic reg_en_F,
-  output logic [1:0] pc_sel_F,
+  output logic [2:0] pc_sel_F,
 
   output logic reg_en_D,
   input logic [31:0] inst_D,
@@ -232,9 +232,14 @@ logic osquash_jalr_X;
 /* STAGE F */
 logic expect_inst;
 assign expect_inst=!( ~stall_F && imemreq_val && !imemreq_rdy);
-pipe_reg #(.DW(1)) pipe_f(
-  clk, reset, 1'b1, expect_inst, val_F
-);
+always @(posedge clk) begin
+  if(rst) val_F<=0;
+  else if(~val_F) val_F<=imemreq_handshake;
+  else if(val_F) begin
+    if(squash_F) val_F<=0;
+    else if(imemresp_handshake && ~imemreq_handshake) val_F<=0;
+  end
+end
 
 logic ostall_wait_imem_data_F;
 assign ostall_wait_imem_data_F=val_F && !imemresp_val;
@@ -243,7 +248,7 @@ assign stall_F=( ostall_F || ostall_D || ostall_X || ostall_M || ostall_W);
 
 assign squash_F=val_F && (osquash_D||osquash_X);
 
-assign reg_en_F= val_F && !stall_F || squash_F;
+assign reg_en_F= !stall_F && imemresp_handshake || squash_F;
 assign next_val_F=val_F && !stall_F && !squash_F;
 
 // pc sel output logic
@@ -252,13 +257,16 @@ always @(*) begin
     pc_sel_F=pc_sel_X;
   else if(pc_redirect_D)
     pc_sel_F=2;
+  else if(~val_F)
+    pc_sel_F=4;
   else
     pc_sel_F=3;
 end
 
 // imem access
-assign imemreq_val=!rst&&(!stall_F||squash_F) || !val_F;
-assign imemresp_rdy=!stall_F||squash_F;
+assign imemreq_val=!rst && (squash_F || ~val_F || 
+  val_F&&imemresp_handshake);
+assign imemresp_rdy=!stall_F||squash_F||~val_F;
 
 /* STAGE D */
 pipe_reg #(.DW(1)) pipe_fd(
